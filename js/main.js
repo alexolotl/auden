@@ -28,7 +28,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
                 camera.position.z = 20;
 
 				scene = new THREE.Scene();
-                scene.fog = new THREE.Fog(0xeeeeee,0,100);
+                scene.fog = new THREE.Fog(0xeeeeee,30,50);
 
 				var geometry = new THREE.PlaneBufferGeometry( 2, 2 );
 
@@ -52,18 +52,19 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 				} );
                 
+                // displace ico geometry
                 var shaderMaterial3 = new THREE.ShaderMaterial( {
-
-					
-					vertexShader: document.getElementById( 'vertexShader3' ).textContent,
+                    vertexShader: document.getElementById( 'vertexShader3' ).textContent,
 					fragmentShader: document.getElementById( 'fragmentShader3' ).textContent,
                     uniforms: uniforms
-                    
-                    
-                    
-
 				} );
-
+                
+                // fbm based on 3d space
+                var shaderMaterial4 = new THREE.ShaderMaterial( {
+                    vertexShader: document.getElementById( 'vertexShader4' ).textContent,
+					fragmentShader: document.getElementById( 'fragmentShader3' ).textContent,
+                    uniforms: uniforms
+				} );
 
 
 				var cubeGeo = new THREE.BoxGeometry(5,5,5,30,30,30);
@@ -72,19 +73,21 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
                 
             
-                var roomGeo = new THREE.BoxGeometry(100,50,100);
-                var roomMat = new THREE.MeshPhongMaterial( { color: 0xdddddd, specular: 0xffffff, shininess: 30, side: THREE.BackSide} );
+                var roomGeo = new THREE.BoxGeometry(1000,1000,1000);
+                var roomMat = new THREE.MeshPhongMaterial( { color: 0xeeeeee, specular: 0xffffff, shininess: 0, side: THREE.BackSide} );
                 var room = new THREE.Mesh(roomGeo, roomMat);
                 room.receiveShadow = true;
-                //scene.add( room );
+                scene.add( room );
                 
-                var floorGeo = new THREE.PlaneGeometry(100,100);
+                var floorGeo = new THREE.PlaneGeometry(500,500);
                 var floorMat = new THREE.MeshPhongMaterial( { color: 0xdddddd, specular: 0xffffff, shininess: 0, side: THREE.DoubleSide} );
                 var floor = new THREE.Mesh(floorGeo, floorMat);
                 floor.rotateX(Math.PI / 2);
                 floor.position.y = -6;
                 floor.receiveShadow = true;
                 scene.add( floor );
+                
+                
                 
                 var light = new THREE.SpotLight( 0xffffff);
                 light.position.set( 40,100,20 );
@@ -112,14 +115,14 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 				//scene.add( ico );
                 
                 var icoGeo = new THREE.IcosahedronGeometry(2,6);
-				var ico = new THREE.Mesh( icoGeo, shaderMaterial3 );
+				var ico = new THREE.Mesh( icoGeo, shaderMaterial4 );
                 ico.rotateY(Math.PI/2);
                 ico.castShadow = true;
                 ico.receiveShadow = true;
                 ico.customDepthMaterial = new THREE.ShaderMaterial({
-                    vertexShader: document.getElementById('vertexShader3').textContent,
+                    vertexShader: document.getElementById('vertexShader4').textContent,
                     fragmentShader: THREE.ShaderLib.depthRGBA.fragmentShader,
-                    uniforms: shaderMaterial3.uniforms
+                    uniforms: shaderMaterial4.uniforms
                 });
                 
                 scene.add( ico );
