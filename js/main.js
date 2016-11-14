@@ -28,7 +28,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
                 camera.position.z = 20;
 
 				scene = new THREE.Scene();
-                scene.fog = new THREE.Fog( 0xffffff, 0.015, 20 );
+                scene.fog = new THREE.Fog(0xeeeeee,0,100);
 
 				var geometry = new THREE.PlaneBufferGeometry( 2, 2 );
 
@@ -57,11 +57,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 					
 					vertexShader: document.getElementById( 'vertexShader3' ).textContent,
 					fragmentShader: document.getElementById( 'fragmentShader3' ).textContent,
-                    fog: true,
-                    uniforms: THREE.UniformsUtils.merge([
-                        THREE.UniformsLib[ "fog" ],
-                        uniforms
-                        ])
+                    uniforms: uniforms
                     
                     
                     
@@ -109,7 +105,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
                 scene.add( light );
                 
                 var spotLightHelper = new THREE.SpotLightHelper( light );
-                scene.add( spotLightHelper );
+                //scene.add( spotLightHelper );
                 
                 var icoGeo = new THREE.PlaneGeometry(10,10,400,400);
 				var ico = new THREE.Mesh( icoGeo, shaderMaterial2 );
@@ -117,6 +113,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
                 
                 var icoGeo = new THREE.IcosahedronGeometry(2,6);
 				var ico = new THREE.Mesh( icoGeo, shaderMaterial3 );
+                ico.rotateY(Math.PI/2);
                 ico.castShadow = true;
                 ico.receiveShadow = true;
                 ico.customDepthMaterial = new THREE.ShaderMaterial({
@@ -128,10 +125,11 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
                 scene.add( ico );
                 
 				renderer = new THREE.WebGLRenderer();
+                renderer.antialias = true;
 				renderer.setPixelRatio( window.devicePixelRatio );
                 renderer.shadowMapEnabled = true;
                 renderer.shadowMapSoft = true;
-                renderer.setClearColor(0xcccccc);
+                renderer.setClearColor(0xdddddd);
 				container.appendChild( renderer.domElement );
                 
                 controls = new THREE.OrbitControls(camera, renderer.domElement);
