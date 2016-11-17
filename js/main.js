@@ -37,6 +37,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 					resolution: { type: "v2", value: new THREE.Vector2() },
 					mouse: {type: "v2", value: new THREE.Vector2() },
 					scale: {type: "f", value: 0.0},
+                    lightpos: {type: "v3", value: new THREE.Vector3(0,0,0)},
 					uTexCube: { type: "t", value: THREE.ImageUtils.loadTextureCube( [ "/img/Skybox/right.bmp", "/img/Skybox/left.bmp", // cube texture
                                                                      "/img/Skybox/up.bmp", "/img/Skybox/down.bmp",
                                                                      "/img/Skybox/front.bmp", "/img/Skybox/back.bmp" ] ) }
@@ -90,7 +91,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
                 
                 
                 var light = new THREE.SpotLight( 0xffffff);
-                light.position.set( 40,100,20 );
+                light.position.set( 30,70,40 );
                 light.castShadow = true;
                 light.shadowMapWidth = 1024;
                 light.shadowMapHeight = 1024;
@@ -104,19 +105,24 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
                 light.target.y = 0;
                 light.target.z = 0;
                 light.name = "mouselight";
-                
                 scene.add( light );
+                uniforms.lightpos.value = light.position;
+                
+                var plight = new THREE.PointLight( 0xffffff);
+                plight.position.set( 40,100,20 );
+                plight.castShadow = true;
+                //scene.add(plight);
                 
                 var spotLightHelper = new THREE.SpotLightHelper( light );
-                //scene.add( spotLightHelper );
+                scene.add( spotLightHelper );
                 
-                var icoGeo = new THREE.PlaneGeometry(10,10,400,400);
-				var ico = new THREE.Mesh( icoGeo, shaderMaterial2 );
+                //var icoGeo = new THREE.PlaneGeometry(10,10,400,400);
+				//var ico = new THREE.Mesh( icoGeo, shaderMaterial2 );
 				//scene.add( ico );
                 
-                var icoGeo = new THREE.IcosahedronGeometry(2,6);
+                var icoGeo = new THREE.PlaneGeometry(40,40,300,300);//IcosahedronGeometry(2,6);
 				var ico = new THREE.Mesh( icoGeo, shaderMaterial4 );
-                ico.rotateY(Math.PI/2);
+                //ico.rotateY(Math.PI/2);
                 ico.castShadow = true;
                 ico.receiveShadow = true;
                 ico.customDepthMaterial = new THREE.ShaderMaterial({
@@ -124,7 +130,6 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
                     fragmentShader: THREE.ShaderLib.depthRGBA.fragmentShader,
                     uniforms: shaderMaterial4.uniforms
                 });
-                
                 scene.add( ico );
                 
 				renderer = new THREE.WebGLRenderer();

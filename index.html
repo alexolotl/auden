@@ -585,33 +585,7 @@
         }
 
 		</script>
-    <script id="fragmentShader3" type="x-shader/x-fragment">
     
-            uniform vec2 resolution;
-			uniform float time;
-            varying vec2 vUv;
-            varying float vColor;
-            varying vec2 vR;
-
-        void main()
-        {
-        
-            
-
-        
-            float color = vColor;
-            vec2 r = vR;
-
-            vec3 color1 = mix(vec3(0.,0.6,0.7),vec3(0.4,0.1,0.2),color);
-            vec3 color2 = mix(vec3(.7,.1,.3),vec3(.6,.9,.9),length(r));
-            vec3 colorBands = smoothstep(0.8,1.0,color1);
-            vec3 color3 = mix(color1,vec3(0.9,0.8,0.2),r.x);
-            vec3 color4 = mix(color3,color2*colorBands,color/4.);
-
-            gl_FragColor = vec4(color4*color2*2.+colorBands, 1.0); //just taking vec3(color) gives nice black/white version
-            //gl_FragColor = vec4(vec3(color), 1.0);
-        }
-    </script>
     
     
     
@@ -625,10 +599,14 @@
         varying vec4 vReflection;
         varying float vColor;
         varying vec2 vR;
+        varying vec3 vVecPos;
+        varying vec2 vScreen;
+        varying vec2 vMouse;
         uniform float time;
         uniform vec2 mouse;
         uniform vec2 resolution;
         uniform float scale;
+    
         
         
         
@@ -731,37 +709,116 @@
         
         
         
-        
-        
+        vec2 get2dPoint(vec3 point3D, float width, float height) {
 
-        // fbm based on 3d space not uv
-      
+              mat4 viewProjectionMatrix = projectionMatrix*viewMatrix;
+              point3D = (viewProjectionMatrix*vec4(point3D,1.0)).xyz;
+              float winX = ((( point3D.x + 1.0 ) / 2.0) *
+                                           width );
+              float winY = ((( 1.0 - point3D.y ) / 2.0) *
+                                           height );
+              return vec2(winX, winY);
+        }
+
+
+        
+        vec3 parametric(float newu, float newv) {
+            vec3 newValue;
+            newValue.x = sin(newu)*cos(newv);
+            newValue.y = sin(newu)*sin(newv);
+            newValue.z = cos(newu);
+
+            vec3 normVal = normalize(newValue);
+            
+            
+            vec3 npos = normVal;
+            vec2 q = vec2( fbm(npos*1.25 + time/4.5), fbm(npos + time/5.) );
+            vec2 r = vec2( fbm(npos - time/7.), fbm(npos + time/5.) );
+            float color = fbm(npos*M_PI*q.x*q.y + npos*M_PI*r.x*r.y + time/8.);
+            vColor = color;
+            vR = r;
+              
+            vec3 displacement = normVal*vec3((1.0-vColor)/3.0 + 2.0);
+            
+            vec3 displaced = displacement + newValue;
+            
+            //vec2 screen = get2dPoint(displaced, resolution.x, resolution.y);
+            //vScreen = screen;
+            //vMouse = mouse;
+            //displaced += normVal*max(0.0,1.0-distance(mouse,screen/resolution+resolution/2.0)/10.);
+            
+        
+            return displaced;
+        }
+        
         void main()	{
             vUv = uv / 2.0;
             
             vec2 st = vUv.xy;
             
-            vec3 npos = position / 2.;
-            npos = clamp(npos,-0.999,.999);
-            
-            vec2 q = vec2( fbm(npos + time/4.), fbm(npos) );
-            vec2 r = vec2( fbm(npos - time/4.), fbm(npos + time/3.) );
-            float color = fbm(npos + time/4.);
-            vColor = color;
-            vR = r;
-            
-            vec3 normVal = normalize(position);
+            vUv.x = uv.x * M_PI;
+            vUv.y = uv.y * M_PI*2.0;
             
             
-            vec3 displacement = normVal*vec3((vColor) + 3.0) + normVal*sin(position.x*position.y*M_PI/4. + time)*sin(position.z*position.y*M_PI/4. + time*.8)*sin(position.z*position.x*M_PI/4. + time*.72);
+
+            vec3 newPosition = parametric(vUv.x, vUv.y);
+
+            float smallvalue = 0.02;
+
+            vec3 neighbor1 = parametric(vUv.x+smallvalue, vUv.y);
+            vec3 neighbor2 = parametric(vUv.x, vUv.y+smallvalue);
+
+            vec3 tangent = neighbor1 - newPosition;
+            vec3 bitangent = neighbor2 - newPosition;
+
+            vNormal = normalize(cross(tangent, bitangent));
             
-            vec3 newPosition = position + displacement;
             
-            vColor += 0.2*fbm(npos*10. + time/3.0);
+            vVecPos = (modelMatrix*vec4(newPosition,1.0)).xyz;
+            
             gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
         }
 
 		</script>
+    
+    
+    <script id="fragmentShader3" type="x-shader/x-fragment">
+    
+            uniform vec2 resolution;
+			uniform float time;
+            uniform vec3 lightpos;
+            uniform vec2 mouse;
+            varying vec2 vUv;
+            varying float vColor;
+            varying vec2 vR;
+            varying vec3 vVecPos;
+            varying vec3 vNormal;
+            varying vec2 vScreen;
+            varying vec2 vMouse;
+
+        void main()
+        {
+        
+            vec2 uv = vUv;
+            float color = vColor;
+            vec2 r = vR;
+            
+            vec3 color1 = mix(vec3(0.8+.3*sin(time/3.),0.7+.5*sin(time*2.),0.5+0.5*sin(time*3.)),vec3(0.1+.2*sin(time/10.),0.5,0.5+sin(time/2.5)),color);
+            vec3 color2 = mix(vec3(.7+.5*sin(time/3.),.9,.9+.5*sin(time*2.5)),vec3(.8+.2*sin(time*1.5),.6,.9),length(r));
+            vec3 colorBands = smoothstep(0.8,1.0,color1);
+            vec3 color3 = mix(color1,vec3(0.6,0.8,0.9+.1*sin(time/3.3)),color);
+            vec3 color4 = mix(color3,color2*colorBands,color*4.);
+            
+            vec3 lightDirection =  normalize(lightpos - vVecPos);
+            
+            float c = 0.3 + max(0.0, dot(vNormal, lightDirection))*.7;
+
+            vec3 color5 = vec3(1.0);
+            
+            gl_FragColor = vec4(color5, 1.0) * c;
+        }
+    </script>
+    
     
 	<script  src="./js/main.js"></script>
 </body>
