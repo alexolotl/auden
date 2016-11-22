@@ -160,16 +160,17 @@
                 vec3 normVal = normalize(newValue);
                 vec2 screen = mouse/resolution * 2.0 - 1.0;
                 //newValue += normVal * .1*(1.+sin(newValue.y*24.+time*3.)/2.);
-                newValue += normVal * .02*sin(newValue.y+3.*time);
+                newValue += normVal * (.021*sin(newValue.y+3.*time) + .015*sin(newValue.y*1.1+4.*time));
                 //newValue += normVal * .02*cnoise(vec3(newValue.xy*cnoise(vec3(sin(newValue.z+time),newValue.yx)), time));
                 newValue += normVal * .015*cnoise(vec3(newValue.xyz*2.+sin(fbm(vec3(newValue/2.+time/5.)))));
                 newValue += normVal * .01*cnoise(vec3(newValue.xyz*1.5-sin(fbm(vec3(newValue/1.5-time/4.)))));
 
                 newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), screen.y/2.)*vec4(newValue,1.0) ).xyz;
                 newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/2.)*vec4(newValue,1.0) ).xyz;
+                newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), time/10.)*vec4(newValue,1.0) ).xyz;
 
                 vec3 mouseDisplacement = normVal*mousePullHeight*(1.0-interpolate(max(0.0, mousePullWidth-distance(pickPoint.zyx*vec3(1.,1.,-1.), newValue.xyz))/mousePullWidth));
-                newValue += mouseDisplacement/16.+mouseDisplacement*.1*cnoise(vec3(newValue.xyz*.3-sin(fbm(vec3(newValue/2.-time/4.5)))));;//*.005*pickPoint.x*pickPoint.x*(1.+sin(10.*distance(mouseDisplacement,newValue)-time*4.))/2.;
+                newValue += mouseDisplacement/16.+mouseDisplacement*.1*cnoise(vec3(newValue.xyz*.3-sin(fbm(vec3(newValue/1.7-time/4.5)))));;//*.005*pickPoint.x*pickPoint.x*(1.+sin(10.*distance(mouseDisplacement,newValue)-time*4.))/2.;
 
                 return newValue;
 
@@ -178,7 +179,7 @@
 
           void main(void) {
               float mousePullWidth = 2.8;
-              float mousePullHeight = 2.4;
+              float mousePullHeight = 2.;
 
               vec3 v = position;
 
