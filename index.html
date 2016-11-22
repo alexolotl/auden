@@ -165,8 +165,8 @@
                 newValue += normVal * .015*cnoise(vec3(newValue.xyz*2.+sin(fbm(vec3(newValue/2.+time/5.)))));
                 newValue += normVal * .01*cnoise(vec3(newValue.xyz*1.5-sin(fbm(vec3(newValue/1.5-time/4.)))));
 
-                newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), screen.y)*vec4(newValue,1.0) ).xyz;
-                newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x)*vec4(newValue,1.0) ).xyz;
+                newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), screen.y/2.)*vec4(newValue,1.0) ).xyz;
+                newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/2.)*vec4(newValue,1.0) ).xyz;
 
                 vec3 mouseDisplacement = normVal*mousePullHeight*(1.0-interpolate(max(0.0, mousePullWidth-distance(pickPoint.zyx*vec3(1.,1.,-1.), newValue.xyz))/mousePullWidth));
                 newValue += mouseDisplacement/16.+mouseDisplacement*.1*cnoise(vec3(newValue.xyz*.3-sin(fbm(vec3(newValue/2.-time/4.5)))));;//*.005*pickPoint.x*pickPoint.x*(1.+sin(10.*distance(mouseDisplacement,newValue)-time*4.))/2.;
