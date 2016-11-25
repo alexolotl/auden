@@ -25,6 +25,8 @@
           uniform float gravityScale;
           uniform vec2 resolution;
           uniform mat4 model_matrix;
+          uniform mat4 world;
+          uniform vec3 vEyePosition;
 
           // Varying
           varying vec3 vPosition;
@@ -33,84 +35,199 @@
           varying vec3 vColor;
           varying vec2 vR;
           varying float vColor0;
-
-
+          varying vec4 vReflection;
 
 
           //  Classic Perlin 3D Noise
-          //  by Stefan Gustavson
+//  by Stefan Gustavson
+//
+vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
+float permute(float x){return floor(mod(((x*34.0)+1.0)*x, 289.0));}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
+float taylorInvSqrt(float r){return 1.79284291400159 - 0.85373472095314 * r;}
+vec3 fade(vec3 t) {return t*t*t*(t*(t*6.0-15.0)+10.0);}
+
+float cnoise(vec3 P){
+  vec3 Pi0 = floor(P); // Integer part for indexing
+  vec3 Pi1 = Pi0 + vec3(1.0); // Integer part + 1
+  Pi0 = mod(Pi0, 289.0);
+  Pi1 = mod(Pi1, 289.0);
+  vec3 Pf0 = fract(P); // Fractional part for interpolation
+  vec3 Pf1 = Pf0 - vec3(1.0); // Fractional part - 1.0
+  vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
+  vec4 iy = vec4(Pi0.yy, Pi1.yy);
+  vec4 iz0 = Pi0.zzzz;
+  vec4 iz1 = Pi1.zzzz;
+
+  vec4 ixy = permute(permute(ix) + iy);
+  vec4 ixy0 = permute(ixy + iz0);
+  vec4 ixy1 = permute(ixy + iz1);
+
+  vec4 gx0 = ixy0 / 7.0;
+  vec4 gy0 = fract(floor(gx0) / 7.0) - 0.5;
+  gx0 = fract(gx0);
+  vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0);
+  vec4 sz0 = step(gz0, vec4(0.0));
+  gx0 -= sz0 * (step(0.0, gx0) - 0.5);
+  gy0 -= sz0 * (step(0.0, gy0) - 0.5);
+
+  vec4 gx1 = ixy1 / 7.0;
+  vec4 gy1 = fract(floor(gx1) / 7.0) - 0.5;
+  gx1 = fract(gx1);
+  vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1);
+  vec4 sz1 = step(gz1, vec4(0.0));
+  gx1 -= sz1 * (step(0.0, gx1) - 0.5);
+  gy1 -= sz1 * (step(0.0, gy1) - 0.5);
+
+  vec3 g000 = vec3(gx0.x,gy0.x,gz0.x);
+  vec3 g100 = vec3(gx0.y,gy0.y,gz0.y);
+  vec3 g010 = vec3(gx0.z,gy0.z,gz0.z);
+  vec3 g110 = vec3(gx0.w,gy0.w,gz0.w);
+  vec3 g001 = vec3(gx1.x,gy1.x,gz1.x);
+  vec3 g101 = vec3(gx1.y,gy1.y,gz1.y);
+  vec3 g011 = vec3(gx1.z,gy1.z,gz1.z);
+  vec3 g111 = vec3(gx1.w,gy1.w,gz1.w);
+
+  vec4 norm0 = taylorInvSqrt(vec4(dot(g000, g000), dot(g010, g010), dot(g100, g100), dot(g110, g110)));
+  g000 *= norm0.x;
+  g010 *= norm0.y;
+  g100 *= norm0.z;
+  g110 *= norm0.w;
+  vec4 norm1 = taylorInvSqrt(vec4(dot(g001, g001), dot(g011, g011), dot(g101, g101), dot(g111, g111)));
+  g001 *= norm1.x;
+  g011 *= norm1.y;
+  g101 *= norm1.z;
+  g111 *= norm1.w;
+
+  float n000 = dot(g000, Pf0);
+  float n100 = dot(g100, vec3(Pf1.x, Pf0.yz));
+  float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z));
+  float n110 = dot(g110, vec3(Pf1.xy, Pf0.z));
+  float n001 = dot(g001, vec3(Pf0.xy, Pf1.z));
+  float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z));
+  float n011 = dot(g011, vec3(Pf0.x, Pf1.yz));
+  float n111 = dot(g111, Pf1);
+
+  vec3 fade_xyz = fade(Pf0);
+  vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z);
+  vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);
+  float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);
+  return 2.2 * n_xyz;
+}
+
+
+
+
+
+
+          //  Simplex 4D Noise
+          //  by Ian McEwan, Ashima Arts
           //
-          vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
-          vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
-          vec3 fade(vec3 t) {return t*t*t*(t*(t*6.0-15.0)+10.0);}
 
-          float cnoise(vec3 P){
-            vec3 Pi0 = floor(P); // Integer part for indexing
-            vec3 Pi1 = Pi0 + vec3(1.0); // Integer part + 1
-            Pi0 = mod(Pi0, 289.0);
-            Pi1 = mod(Pi1, 289.0);
-            vec3 Pf0 = fract(P); // Fractional part for interpolation
-            vec3 Pf1 = Pf0 - vec3(1.0); // Fractional part - 1.0
-            vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
-            vec4 iy = vec4(Pi0.yy, Pi1.yy);
-            vec4 iz0 = Pi0.zzzz;
-            vec4 iz1 = Pi1.zzzz;
 
-            vec4 ixy = permute(permute(ix) + iy);
-            vec4 ixy0 = permute(ixy + iz0);
-            vec4 ixy1 = permute(ixy + iz1);
+          vec4 grad4(float j, vec4 ip){
+            const vec4 ones = vec4(1.0, 1.0, 1.0, -1.0);
+            vec4 p,s;
 
-            vec4 gx0 = ixy0 / 7.0;
-            vec4 gy0 = fract(floor(gx0) / 7.0) - 0.5;
-            gx0 = fract(gx0);
-            vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0);
-            vec4 sz0 = step(gz0, vec4(0.0));
-            gx0 -= sz0 * (step(0.0, gx0) - 0.5);
-            gy0 -= sz0 * (step(0.0, gy0) - 0.5);
+            p.xyz = floor( fract (vec3(j) * ip.xyz) * 7.0) * ip.z - 1.0;
+            p.w = 1.5 - dot(abs(p.xyz), ones.xyz);
+            s = vec4(lessThan(p, vec4(0.0)));
+            p.xyz = p.xyz + (s.xyz*2.0 - 1.0) * s.www;
 
-            vec4 gx1 = ixy1 / 7.0;
-            vec4 gy1 = fract(floor(gx1) / 7.0) - 0.5;
-            gx1 = fract(gx1);
-            vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1);
-            vec4 sz1 = step(gz1, vec4(0.0));
-            gx1 -= sz1 * (step(0.0, gx1) - 0.5);
-            gy1 -= sz1 * (step(0.0, gy1) - 0.5);
-
-            vec3 g000 = vec3(gx0.x,gy0.x,gz0.x);
-            vec3 g100 = vec3(gx0.y,gy0.y,gz0.y);
-            vec3 g010 = vec3(gx0.z,gy0.z,gz0.z);
-            vec3 g110 = vec3(gx0.w,gy0.w,gz0.w);
-            vec3 g001 = vec3(gx1.x,gy1.x,gz1.x);
-            vec3 g101 = vec3(gx1.y,gy1.y,gz1.y);
-            vec3 g011 = vec3(gx1.z,gy1.z,gz1.z);
-            vec3 g111 = vec3(gx1.w,gy1.w,gz1.w);
-
-            vec4 norm0 = taylorInvSqrt(vec4(dot(g000, g000), dot(g010, g010), dot(g100, g100), dot(g110, g110)));
-            g000 *= norm0.x;
-            g010 *= norm0.y;
-            g100 *= norm0.z;
-            g110 *= norm0.w;
-            vec4 norm1 = taylorInvSqrt(vec4(dot(g001, g001), dot(g011, g011), dot(g101, g101), dot(g111, g111)));
-            g001 *= norm1.x;
-            g011 *= norm1.y;
-            g101 *= norm1.z;
-            g111 *= norm1.w;
-
-            float n000 = dot(g000, Pf0);
-            float n100 = dot(g100, vec3(Pf1.x, Pf0.yz));
-            float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z));
-            float n110 = dot(g110, vec3(Pf1.xy, Pf0.z));
-            float n001 = dot(g001, vec3(Pf0.xy, Pf1.z));
-            float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z));
-            float n011 = dot(g011, vec3(Pf0.x, Pf1.yz));
-            float n111 = dot(g111, Pf1);
-
-            vec3 fade_xyz = fade(Pf0);
-            vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z);
-            vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);
-            float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);
-            return 2.2 * n_xyz;
+            return p;
           }
+
+          float snoise(vec4 v){
+            const vec2  C = vec2( 0.138196601125010504,  // (5 - sqrt(5))/20  G4
+                                  0.309016994374947451); // (sqrt(5) - 1)/4   F4
+          // First corner
+            vec4 i  = floor(v + dot(v, C.yyyy) );
+            vec4 x0 = v -   i + dot(i, C.xxxx);
+
+          // Other corners
+
+          // Rank sorting originally contributed by Bill Licea-Kane, AMD (formerly ATI)
+            vec4 i0;
+
+            vec3 isX = step( x0.yzw, x0.xxx );
+            vec3 isYZ = step( x0.zww, x0.yyz );
+          //  i0.x = dot( isX, vec3( 1.0 ) );
+            i0.x = isX.x + isX.y + isX.z;
+            i0.yzw = 1.0 - isX;
+
+          //  i0.y += dot( isYZ.xy, vec2( 1.0 ) );
+            i0.y += isYZ.x + isYZ.y;
+            i0.zw += 1.0 - isYZ.xy;
+
+            i0.z += isYZ.z;
+            i0.w += 1.0 - isYZ.z;
+
+            // i0 now contains the unique values 0,1,2,3 in each channel
+            vec4 i3 = clamp( i0, 0.0, 1.0 );
+            vec4 i2 = clamp( i0-1.0, 0.0, 1.0 );
+            vec4 i1 = clamp( i0-2.0, 0.0, 1.0 );
+
+            //  x0 = x0 - 0.0 + 0.0 * C
+            vec4 x1 = x0 - i1 + 1.0 * C.xxxx;
+            vec4 x2 = x0 - i2 + 2.0 * C.xxxx;
+            vec4 x3 = x0 - i3 + 3.0 * C.xxxx;
+            vec4 x4 = x0 - 1.0 + 4.0 * C.xxxx;
+
+          // Permutations
+            i = mod(i, 289.0);
+            float j0 = permute( permute( permute( permute(i.w) + i.z) + i.y) + i.x);
+            vec4 j1 = permute( permute( permute( permute (
+                       i.w + vec4(i1.w, i2.w, i3.w, 1.0 ))
+                     + i.z + vec4(i1.z, i2.z, i3.z, 1.0 ))
+                     + i.y + vec4(i1.y, i2.y, i3.y, 1.0 ))
+                     + i.x + vec4(i1.x, i2.x, i3.x, 1.0 ));
+          // Gradients
+          // ( 7*7*6 points uniformly over a cube, mapped onto a 4-octahedron.)
+          // 7*7*6 = 294, which is close to the ring size 17*17 = 289.
+
+            vec4 ip = vec4(1.0/294.0, 1.0/49.0, 1.0/7.0, 0.0) ;
+
+            vec4 p0 = grad4(j0,   ip);
+            vec4 p1 = grad4(j1.x, ip);
+            vec4 p2 = grad4(j1.y, ip);
+            vec4 p3 = grad4(j1.z, ip);
+            vec4 p4 = grad4(j1.w, ip);
+
+          // Normalise gradients
+            vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+            p0 *= norm.x;
+            p1 *= norm.y;
+            p2 *= norm.z;
+            p3 *= norm.w;
+            p4 *= taylorInvSqrt(dot(p4,p4));
+
+          // Mix contributions from the five corners
+            vec3 m0 = max(0.6 - vec3(dot(x0,x0), dot(x1,x1), dot(x2,x2)), 0.0);
+            vec2 m1 = max(0.6 - vec2(dot(x3,x3), dot(x4,x4)            ), 0.0);
+            m0 = m0 * m0;
+            m1 = m1 * m1;
+            return 49.0 * ( dot(m0*m0, vec3( dot( p0, x0 ), dot( p1, x1 ), dot( p2, x2 )))
+                         + dot(m1*m1, vec2( dot( p3, x3 ), dot( p4, x4 ) ) ) ) ;
+
+          }
+
+          #define NUM_OCTAVES 2
+
+          float fbm(vec4 x) {
+            float v = 0.0;
+            float a = 0.5;
+            vec4 shift = vec4(100.);
+            for (int i = 0; i < NUM_OCTAVES; ++i) {
+                v += a * snoise(x);
+                x = x * 2.0 + shift;
+                a *= 0.5;
+            }
+            return v;
+        }
+
+
+
+
 
 
           mat4 rotationMatrix(vec3 axis, float angle)
@@ -126,24 +243,8 @@
                           0.0,                                0.0,                                0.0,                                1.0);
           }
 
-
-
-
-          #define NUM_OCTAVES 3
-          float fbm(vec3 x) {
-    float v = 0.0;
-    float a = 0.5;
-    vec3 shift = vec3(100);
-    for (int i = 0; i < NUM_OCTAVES; ++i) {
-        v += a * cnoise(x);
-        x = x * 2.0 + shift;
-        a *= 0.5;
-    }
-    return v;
-}
-
           float interpolate(float val) {
-            return 1.0 - pow(abs(sin(M_PI * val / 2.0)),2.);
+            return pow(abs(sin(M_PI * val / 2.0)),2.);
           }
 
 
@@ -151,26 +252,59 @@
               return mat2(cos(_angle),-sin(_angle),sin(_angle),cos(_angle));
           }
 
+          vec3 rotateValue(vec3 inVal, vec3 inNorm, float angle) {
+            return (rotationMatrix(inNorm, angle)*vec4(inVal,1.0)).xyz;
+          }
+
           vec3 parametric(float newu, float newv, float mousePullWidth, float mousePullHeight) {
                 vec3 newValue;
+
                 newValue.x = sin(newu)*cos(newv);
                 newValue.y = sin(newu)*sin(newv);
                 newValue.z = cos(newu);
                 newValue*=2.5;
                 vec3 normVal = normalize(newValue);
+
+
                 vec2 screen = mouse/resolution * 2.0 - 1.0;
-                //newValue += normVal * .1*(1.+sin(newValue.y*24.+time*3.)/2.);
-                newValue += normVal * (.021*sin(newValue.y+3.*time) + .015*sin(newValue.y*1.1+4.*time));
-                //newValue += normVal * .02*cnoise(vec3(newValue.xy*cnoise(vec3(sin(newValue.z+time),newValue.yx)), time));
-                newValue += normVal * .015*cnoise(vec3(newValue.xyz*2.+sin(fbm(vec3(newValue/2.+time/5.)))));
-                newValue += normVal * .01*cnoise(vec3(newValue.xyz*1.5-sin(fbm(vec3(newValue/1.5-time/4.)))));
 
-                newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), screen.y/2.)*vec4(newValue,1.0) ).xyz;
+                //newValue += normVal * (.021*sin(newValue.y+3.*time) + .015*sin(newValue.y*1.1+4.*time));
+                //newValue += normVal * .2*sin(.5*cnoise(vec3(newValue.xyz*2.+sin(fbm(vec3(newValue/2.+time/5.))))));
+                //newValue += normVal * .01*cnoise(vec3(newValue.xyz*1.5-sin(fbm(vec3(newValue/1.5-time/4.)))));
+                //newValue += normVal * .08*sin(20.*fbm(vec3(newValue/2.+.5))+time*5.);
+                //vec3 tempValue = normVal * 1.*fbm(newValue/5.+sin(time/4.));
+                //newValue += normVal * 0.9*sin(fbm(tempValue/1. + time/2.));
+                //newValue += normVal * .0001*sin(1.*fbm(vec3(newValue/40.+.5))+time*4.);
+                //float tempVal = .2*sin(10.*cnoise(vec3(newValue.yxz/10.))+.3*fbm(vec3(time*.10)));
+                //normVal += .9*vec3(tempVal/3.+cnoise(newValue/20. + 3.*fbm(vec3(newValue/4.+time))));
+                //newValue += normVal*(.1*sin(cnoise(newValue*4.))- .2*fbm(vec3(time/20.)));
+                //newValue += normVal*.01*sin(20.*cnoise(-newValue*normVal - time));
+
+                //newValue += cnoise(vec3(fbm(newValue)+time,fbm(newValue*2.)-time,fbm(newValue+time)-time));
+
+
+                //float angle = sin(snoise(vec4(rotateValue(newValue.xyz/5.+vec3(.4,6.2,3.2), vec3(1.,0,0.),time/6.),time/4.)))*M_PI;
+                //normVal = mix(normVal, rotateValue(newValue, vec3(0.,1.,0.),angle), .1);
+
+
+
+                //newValue += .02*normVal*( 5.*(.75+.25*sin(time/6.+10.*1.*fbm(vec4(newValue/3.3,-time/3.) +1.*fbm(vec4(newValue/12.+vec3(11.3+time/13.,42.5+time/13.,33.8+time/16.),time/4.)))) ));
+                //newValue += .007*normVal*( 2.*(.75+.25*sin(time/6.+10.*1.*fbm(vec4(newValue/3.3,-time/2.) +1.*fbm(vec4(newValue/4.5+vec3(11.3+time/13.,32.5+time/13.,33.8+time/16.),time/4.)))) ));
+                //newValue += .001*normVal*( fbm(vec4(newValue*20.+time/4.,time/3.4)));
+
+                newValue += 0.05 * normVal * sin(2.3*newValue.y + time*2.);
+
+                //newValue += normVal * 0.1 * cnoise(newValue*vec3(1.,2.,1.)+time)*sin(newValue.y+time);
+                newValue += normVal * .08 * cnoise(vec3(newValue.x*.8+21.*cnoise(vec3(time/27. +13.5)),newValue.y*2.2+time/7.+19.*cnoise(vec3(time/31.+2.1)),newValue.z*.8+20.*cnoise(vec3(time/28.+2.5))));
+                newValue += normVal * .05 * cnoise(vec3(newValue.x*1.+27.424*cnoise(vec3(time/21. +10.5)),newValue.y*2.0+time/10.256+15.*cnoise(vec3(-time/26.3+6.1)),newValue.z*.8567-15.*cnoise(vec3(time/22.4623+32.5))));
+
+
+                newValue = ( rotationMatrix(vec3(0.0,0.0,1.0), screen.y/2.)*vec4(newValue,1.0) ).xyz;
                 newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/2.)*vec4(newValue,1.0) ).xyz;
-                newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), time/10.)*vec4(newValue,1.0) ).xyz;
+                newValue += .001*normVal*( fbm(vec4(newValue*40.+time/4.,time/3.4)));
+                //newValue = ( rotationMatrix(vec3(0.,1.,0.), time/4.)*vec4(newValue,1.0) ).xyz;
 
-                vec3 mouseDisplacement = normVal*mousePullHeight*(1.0-interpolate(max(0.0, mousePullWidth-distance(pickPoint.zyx*vec3(1.,1.,-1.), newValue.xyz))/mousePullWidth));
-                newValue += mouseDisplacement/16.+mouseDisplacement*.1*cnoise(vec3(newValue.xyz*.3-sin(fbm(vec3(newValue/1.7-time/4.5)))));;//*.005*pickPoint.x*pickPoint.x*(1.+sin(10.*distance(mouseDisplacement,newValue)-time*4.))/2.;
+                newValue += normVal*mousePullHeight*interpolate(max(0., (mousePullWidth-distance(pickPoint,newValue))/mousePullWidth));
 
                 return newValue;
 
@@ -178,8 +312,8 @@
 
 
           void main(void) {
-              float mousePullWidth = 2.8;
-              float mousePullHeight = 2.;
+              float mousePullWidth = 2.6;
+              float mousePullHeight = .4;
 
               vec3 v = position;
 
@@ -195,7 +329,7 @@
               vec3 bitangent = neighbor2 - newPosition;
               vNormal = normalize(cross(tangent, bitangent));
 
-
+              vReflection = reflect(-normalize(world*vec4(newPosition,1.0) - vec4(vEyePosition,1.0)), vec4(vNormal,0.0));
 
               //v += normal*sin(6.0*(v.x+v.y+v.z) + time*4.);
 
@@ -218,6 +352,7 @@
           varying vec3 vColor;
           varying vec2 vR;
           varying float vColor0;
+          varying vec4 vReflection;
 
 
           // Uniforms
@@ -228,6 +363,7 @@
           uniform vec3 cameraPosition;
           uniform sampler2D textureSampler;
           uniform vec3 pickPoint;
+          //uniform samplerCube skybox;
 
           mat2 rotate2d(in float _angle) {
               return mat2(cos(_angle),-sin(_angle),sin(_angle),cos(_angle));
@@ -246,23 +382,28 @@
               vec3 lightVectorW = normalize(vLightPosition - vPositionW);
               vec3 color = texture2D(textureSampler, vUV).rgb;
               color = vec3(1.0,1.0,1.0);
-
-
-              color = vec3(1.0);
+              color = texture2D(textureSampler, mix(vUV,vReflection.xy*1.5,.99)).rgb;
+              color *= (color+.2);
+              //color = mix(color,vec3(1.),.25);
 
 
 
               // emissive
-              float emissive = 0.25;
+              float emissive = 0.3;
+
               // diffuse
               float ndl = max(0., dot(vNormalW, lightVectorW));
+
+              ndl += .5*max(0., dot(vNormalW, normalize(vec3(0.,1.,0.))));
+              ndl += .5*max(0., dot(vNormalW, normalize(vec3(.2,0.,-1.))));
+              ndl += .5*max(0., dot(vNormalW, normalize(vec3(.2,0.,1.))));
 
               // Specular
               vec3 angleW = normalize(viewDirectionW + lightVectorW);
               float specComp = max(0., dot(vNormalW, angleW));
               specComp = pow(specComp, 512.);
 
-              gl_FragColor = vec4(emissive*color + color*ndl*.7 + vec3(specComp)*.9, 1.);
+              gl_FragColor = vec4(emissive*color + color*ndl*.4 + vec3(specComp)*.6 + .65*(1.15-color)*dot(normalize(vPositionW-vLightPosition),vNormal), 1.);
           }
     </script>
     <style>
@@ -337,6 +478,17 @@
                 plane.rotation.y = -Math.PI/2;
                 plane.material.alpha = 0;
 
+                // Skybox
+                var skybox = BABYLON.Mesh.CreateBox("skyBox", 1000.0, scene);
+                var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+                skyboxMaterial.backFaceCulling = false;
+                skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("assets/skybox/skybox", scene);
+                skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+                skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+                skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+                skybox.material = skyboxMaterial;
+                skybox.material.alpha = 0;
+
 
                 // Compile
                 var shaderMaterial = new BABYLON.ShaderMaterial("shader", scene, {
@@ -345,7 +497,7 @@
                 },
                     {
                         attributes: ["position", "normal", "uv"],
-                        uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "mouse", "pickPoint", "gravityScale", "resolution"]
+                        uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "mouse", "pickPoint", "gravityScale", "resolution", "skybox"]
                     });
 
                 var refTexture = new BABYLON.Texture("ref.jpg", scene);
@@ -355,6 +507,7 @@
                 var mainTexture = new BABYLON.Texture("amiga.jpg", scene);
 
                 shaderMaterial.setTexture("textureSampler", mainTexture);
+                shaderMaterial.setVector3("vEyePosition", scene.activeCamera.position);
                 shaderMaterial.setTexture("refSampler", refTexture);
                 shaderMaterial.setFloat("time", 0);
                 shaderMaterial.setVector3("cameraPosition", BABYLON.Vector3.Zero());
@@ -362,6 +515,7 @@
                 shaderMaterial.setVector3("pickPoint", BABYLON.Vector3.Zero());
                 shaderMaterial.setVector2("resolution", new BABYLON.Vector2(window.innerWidth, window.innerHeight));
                 shaderMaterial.setFloat("gravityScale",0);
+                shaderMaterial.setTexture("skybox", skybox.material);
                 shaderMaterial.backFaceCulling = false;
 
                 for (var index = 0; index < meshes.length; index++) {
@@ -369,7 +523,6 @@
                     mesh.material = shaderMaterial;
                 }
                 mesh.isPickable = true;
-                mesh.rotation.y = - Math.PI/2;
 
                 return scene;
             }
