@@ -7,6 +7,7 @@
     <!-- Babylon.js -->
     <script src="babylon.custom.js"></script>
     <script src="hand.minified-1.2.js"></script>
+    <script type="text/javascript" src="dat.gui.min.js"></script>
     <script id="vertex" type="x-shader/x-vertex">
           precision highp float;
 
@@ -27,6 +28,21 @@
           uniform mat4 model_matrix;
           uniform mat4 world;
           uniform vec3 vEyePosition;
+          uniform float time1;
+          uniform float time2;
+          uniform float time3;
+          uniform float time4;
+          uniform float mousePull;
+          uniform float mousePullWidth;
+          uniform float displace;
+          uniform float scale1;
+          uniform float scale2;
+          uniform float scale3;
+          uniform float scale4;
+          uniform float scale5;
+          uniform float scale6;
+          uniform float scale7;
+          uniform float size;
 
           // Varying
           varying vec3 vPosition;
@@ -224,7 +240,7 @@ float snoise(vec3 v){
                 newValue.x = sin(newu)*cos(newv);
                 newValue.y = sin(newu)*sin(newv);
                 newValue.z = cos(newu);
-                newValue*=2.5;
+                newValue*=size/2.;
                 vec3 normVal = normalize(newValue);
 
                 vec2 screen = mouse/resolution * 2.0 - 1.0;
@@ -235,15 +251,28 @@ float snoise(vec3 v){
                 //newValue += normVal * .09 * cnoise(vec3(newValue.x*1.+27.424*cnoise(vec3(time/21. +10.5)),newValue.y*2.0+time/10.256+15.*cnoise(vec3(-time/26.3+6.1)),newValue.z*.8567-15.*cnoise(vec3(time/22.4623+32.5))));
 
                 //newValue += 0.4*normVal*sin(7.*newValue.y +time/3.);
-                float displaceX = snoise(time*0.822+vec3(.75*snoise(newValue/5. - time/4.), newValue.y/2., newValue.z/2.));
-                float displaceY = snoise(time*.76+vec3(newValue.y/2., .75*snoise(newValue/3. - time/5.), newValue.z/2.));
-                float displaceZ = snoise(time*0.8+vec3(newValue.x/2.,newValue.y/2.,.75*snoise(newValue/5. - time/6.)));
-                vec3 displace = vec3(displaceX, displaceY, displaceZ);
+                float displaceX = scale5*snoise(time1*time+0.822+scale1*vec3(.75*scale7*snoise(newValue/5. - time2*time/4.), scale2*newValue.y/2., scale4*newValue.z/2.));
+                float displaceY = scale6*snoise(time1*time+.76+scale1*vec3(scale2*newValue.y/2., scale5*.75*snoise(newValue/3. - time3*time/5.), scale4*newValue.z/2.));
+                float displaceZ = scale7*snoise(time1*time+0.8+scale1*vec3(scale3*newValue.x/2.,scale2*newValue.y/2.,.75*scale6*snoise(newValue/5. - time4*time/6.)));
+                vec3 displaced = vec3(displaceX, displaceY, displaceZ);
                 //displace += 0.25*snoise(displace+time/4.);
-                vColor = displace;
+                vColor = displaced;
                 //displace = smoothstep(vec3(-.5), vec3(.8), displace);
-                newValue += normVal * displace * .05;
+                newValue += normVal * displaced * displace;
                 //float displace = .03 * (1.+cnoise(vec3(newValue.x*1.+27.424*cnoise(vec3(time/21. +10.5)),newValue.y*2.0+time/10.256+15.*cnoise(vec3(-time/26.3+6.1)),newValue.z*.8567-15.*cnoise(vec3(time/22.4623+32.5)))));
+
+
+                float u = newu / M_PI;
+                float v = (1.-(newv / M_PI / 2.));
+                float imageheight = 1.;
+                float imagewidth = 1.;
+                float theta = M_PI*(v - 0.5);//M_PI * (v - (imageheight-1.)/2.0) / (imageheight-1.);
+                float phi  =  M_PI*(u*2.-1.);//M_PI * 2. * (u - imagewidth/2.0) / imagewidth;
+                float phi2 = phi * cos(theta);
+                float i2  = phi2 * imagewidth / M_PI / 2. + imagewidth/2.;
+                //vUV = vec2(v*4.,i2*4. - .5);
+
+
 
                 //newValue += normVal * displace;
                 // ROTATIONS
@@ -252,16 +281,15 @@ float snoise(vec3 v){
                 //newValue += .001*normVal*( cnoise(vec3(newValue*40.+time/4.)));
                 //newValue = ( rotationMatrix(vec3(1.,0.,0.), time/4.)*vec4(newValue,1.0) ).xyz;
 
-                newValue += normVal*(mousePullHeight+displace*.01)*interpolate(max(0., (mousePullWidth-distance(pickPoint,newValue))/mousePullWidth));
-
+                newValue += normVal*(mousePullHeight+displaced*.01)*interpolate(max(0., (mousePullWidth-distance(pickPoint,newValue))/mousePullWidth));
+                //newValue = vec3(4.0,newv/M_PI/2.,newu/M_PI);
                 return newValue;
 
               }
 
 
           void main(void) {
-              float mousePullWidth = 2.3;
-              float mousePullHeight = .2;
+              float mousePullHeight = mousePull;
 
               vec3 v = position;
 
@@ -307,6 +335,7 @@ float snoise(vec3 v){
           // Uniforms
           uniform mat4 world;
           uniform float time;
+          uniform float specularLight;
 
           // Refs
           uniform vec3 cameraPosition;
@@ -322,6 +351,7 @@ float snoise(vec3 v){
               vec3 vLightPosition = vec3(10,20,20);
               //vLightPosition = vec3(8.0,2.0*pickPoint.yz);
               vLightPosition = vec3(6.0,3.0,4.0);
+              vLightPosition = vec3(0.,5.,0.);
 
               // World values
               vec3 vPositionW = vec3(world * vec4(vPosition, 1.0));
@@ -334,17 +364,18 @@ float snoise(vec3 v){
               color = vec3(1.0,1.0,1.0);
               color = texture2D(textureSampler, mix(vUV,vReflection.xz*1.5,.98)).rgb;
               color *= (color+.2);
-              color = mix(color,vec3(1.),.99);
+              color = mix(color,vec3(1.),.96);
+              //color = texture2D(textureSampler, vUV).rgb;
 
               float fresnel = 1.-dot(viewDirectionW, vNormalW);
               //color += vec3(0.,0.,1.)*fresnel;
 
 
               // emissive
-              float emissive = 0.9;
+              float emissive = 1.;
 
               // diffuse
-              float ndl = max(0., dot(vNormalW, normalize(vec3(4.,4.,2.))));
+              float ndl = max(0., dot(vNormalW, normalize(vec3(0.,5.,0.))));
 
               //ndl += .5*max(0., dot(vNormalW, normalize(vec3(0.,1.,0.))));
               //ndl += .5*max(0., dot(vNormalW, normalize(vec3(.2,0.,-1.))));
@@ -355,7 +386,7 @@ float snoise(vec3 v){
               float specComp = max(0., dot(vNormalW, angleW));
               specComp = pow(specComp, 512.) * 0.05;
 
-              gl_FragColor = vec4(mix(emissive*color,ndl*color + specComp*1.5, 0.5),1.);//emissive*color + color*ndl*.3 + vec3(specComp)*.3 + .65*(1.15-color)*dot(normalize(vPositionW-vLightPosition),vNormal), 1.);
+              gl_FragColor = vec4(mix(emissive*color, ndl*color*1. + specComp*5.*specularLight, 0.66),1.);//emissive*color + color*ndl*.3 + vec3(specComp)*.3 + .65*(1.15-color)*dot(normalize(vPositionW-vLightPosition),vNormal), 1.);
           }
     </script>
     <style>
@@ -442,19 +473,20 @@ float snoise(vec3 v){
                 skybox.material.alpha = 0;
 
 
-
+/*
                 var ground = BABYLON.Mesh.CreatePlane("ground", 300.0, scene, false, BABYLON.Mesh.DEFAULTSIDE);
                 ground.material = new BABYLON.StandardMaterial("white", scene);
                 ground.material.diffuseColor = new BABYLON.Color3(1, 1, 1);
                 ground.rotation.x = Math.PI/2;
-                ground.position.y = -4;
+                ground.position.y = -6;
                 ground.receiveShadows = true;
 
-                var light0 = new BABYLON.PointLight("Omni0", new BABYLON.Vector3(12, 6, 5), scene);
+                var light0 = new BABYLON.PointLight("Omni0", new BABYLON.Vector3(48, 24, 20), scene);
                 light0.diffuse = new BABYLON.Color3(1, 1, 1);
                 light0.specular = new BABYLON.Color3(1, 1, 1);
+                light0.intensity = 10;
 
-                var invisibleShadowSphere = BABYLON.Mesh.CreateSphere("mesh", 56, 4, scene);
+                var invisibleShadowSphere = BABYLON.Mesh.CreateSphere("mesh", 56, 2.5, scene);
 
 
                 var shadowGenerator = new BABYLON.ShadowGenerator(1024, light0);
@@ -462,7 +494,7 @@ float snoise(vec3 v){
                 //shadowGenerator.useVarianceShadowMap = true;
                 //shadowGenerator.usePoissonSampling = true;
                 shadowGenerator.useBlurVarianceShadowMap = true;
-
+*/
 
                 // Compile
                 var shaderMaterial = new BABYLON.ShaderMaterial("shader", scene, {
@@ -471,7 +503,10 @@ float snoise(vec3 v){
                 },
                     {
                         attributes: ["position", "normal", "uv"],
-                        uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "mouse", "pickPoint", "gravityScale", "resolution", "skybox"]
+                        uniforms: ["world", "worldView", "worldViewProjection", "view",
+                        "projection", "mouse", "pickPoint", "gravityScale", "resolution", "skybox",
+                        "time1", "time2","time3", "time4", "displace","specularLight", "mousePull","mousePullWidth", "scale1",
+                        "scale2", "scale3", "scale4", "scale5", "scale6", "scale7", "size"]
                     });
 
                 var refTexture = new BABYLON.Texture("ref.jpg", scene);
@@ -490,6 +525,19 @@ float snoise(vec3 v){
                 shaderMaterial.setVector2("resolution", new BABYLON.Vector2(window.innerWidth, window.innerHeight));
                 shaderMaterial.setFloat("gravityScale",0);
                 shaderMaterial.setTexture("skybox", skybox.material);
+                shaderMaterial.setFloat("time1", 1);
+                shaderMaterial.setFloat("time2", 1);
+                shaderMaterial.setFloat("time3", 1);
+                shaderMaterial.setFloat("time4", 1);
+                shaderMaterial.setFloat("displace", 0.2);
+                shaderMaterial.setFloat("scale1", 1.);
+                shaderMaterial.setFloat("scale2", 1.);
+                shaderMaterial.setFloat("scale3", 1.);
+                shaderMaterial.setFloat("scale4", 1.);
+                shaderMaterial.setFloat("scale5", 1.);
+                shaderMaterial.setFloat("scale6", 1.);
+                shaderMaterial.setFloat("scale7", 1.);
+                shaderMaterial.setFloat("size", 5);
                 shaderMaterial.backFaceCulling = false;
 
                 for (var index = 0; index < meshes.length; index++) {
@@ -501,19 +549,98 @@ float snoise(vec3 v){
 
 
 
+
+
+
+
                 return scene;
             }
 
             var scene = createScene();
 
-            scene.clearColor = new BABYLON.Color4(.99,.99,.99,1);
+            var Shader = function() {
+              this.time1 = 1;
+              this.time2 = 1;
+              this.time3 = 1;
+              this.time4 = 1;
+              this.mousePullWidth = 2.3;
+              this.mousePull = .2;
+              this.specularLight = 0;
+              this.displace = 0.2;
+              this.scale1 = 1;
+              this.scale2 = 1;
+              this.scale3 = 1;
+              this.scale4 = 1;
+              this.scale5 = 1;
+              this.scale6 = 1;
+              this.scale7 = 1;
+              this.size = 5;
+            };
+            var shader = new Shader();
+            var gui = new dat.GUI();
+            gui.add(shader, 'displace', 0, 1).name('displacement amount').step(0.01).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("displace", value);
+            });
+            gui.add(shader, 'time1', 0, 3).step(0.05).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("time1", value);
+            });
+            gui.add(shader, 'time2', 0, 3).step(0.05).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("time2", value);
+            });
+            gui.add(shader, 'time3', 0, 3).step(0.05).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("time3", value);
+            });
+            gui.add(shader, 'time4', 0, 3).step(0.05).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("time4", value);
+            });
+            gui.add(shader, 'scale1', 0, 3).step(0.01).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("scale1", value);
+            });
+            gui.add(shader, 'scale2', 0, 3).step(0.01).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("scale2", value);
+            });
+            gui.add(shader, 'scale3', 0, 3).step(0.01).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("scale3", value);
+            });
+            gui.add(shader, 'scale4', 0, 3).step(0.01).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("scale4", value);
+            });
+            gui.add(shader, 'scale5', 0, 3).step(0.01).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("scale5", value);
+            });
+            gui.add(shader, 'scale6', 0, 3).step(0.01).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("scale6", value);
+            });
+            gui.add(shader, 'scale7', 0, 3).step(0.01).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("scale7", value);
+            });
+            gui.add(shader, 'mousePull', 0, 1).step(0.05).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("mousePull", value);
+            });
+            gui.add(shader, 'mousePullWidth', .25, 5).step(0.05).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("mousePullWidth", value);
+            });
+            gui.add(shader, 'specularLight', 0, 1.5).step(0.05).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("specularLight", value);
+            });
+            gui.add(shader, 'size', 0, 5).step(0.05).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("size", value);
+            });
+
+
+
+
+
+            scene.clearColor = new BABYLON.Color4(1,1,1,1);
             scene.fogMode = BABYLON.Scene.FOGMODE_EXP;
-            scene.fogDensity = 0.1;
-            scene.fogStart = 30.0;
+            scene.fogDensity = 0.05;
+            scene.fogStart = 100.0;
             scene.fogEnd = 300.0;
-            scene.fogColor = new BABYLON.Color3(.99, .99, .99);
+            scene.fogColor = new BABYLON.Color3(1, 1, 1);
             var time = 0;
             engine.runRenderLoop(function () {
+
+
                 var shaderMaterial = scene.getMaterialByName("shader");
                 shaderMaterial.setFloat("time", time);
                 time += 0.02;
@@ -531,7 +658,7 @@ float snoise(vec3 v){
 
                 shaderMaterial.setVector3("cameraPosition", scene.activeCamera.position);
 
-                scene.getLightByName("Omni0").position = new BABYLON.Vector3(6,(1-mouse.y/window.innerHeight)*2+2,mouse.x/window.innerWidth*4-2);
+                //scene.getLightByName("Omni0").position = new BABYLON.Vector3(6,(1-mouse.y/window.innerHeight)*2+2,mouse.x/window.innerWidth*4-2);
 
                 scene.render();
             });
