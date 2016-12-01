@@ -43,6 +43,7 @@
           uniform float scale6;
           uniform float scale7;
           uniform float size;
+          uniform float reflection;
 
           // Varying
           varying vec3 vPosition;
@@ -336,6 +337,7 @@ float snoise(vec3 v){
           uniform mat4 world;
           uniform float time;
           uniform float specularLight;
+          uniform float reflection;
 
           // Refs
           uniform vec3 cameraPosition;
@@ -364,7 +366,7 @@ float snoise(vec3 v){
               color = vec3(1.0,1.0,1.0);
               color = texture2D(textureSampler, mix(vUV,vReflection.xz*1.5,.98)).rgb;
               color *= (color+.2);
-              color = mix(color,vec3(1.),.96);
+              color = mix(vec3(1.),color,reflection);
               //color = texture2D(textureSampler, vUV).rgb;
 
               float fresnel = 1.-dot(viewDirectionW, vNormalW);
@@ -506,7 +508,7 @@ float snoise(vec3 v){
                         uniforms: ["world", "worldView", "worldViewProjection", "view",
                         "projection", "mouse", "pickPoint", "gravityScale", "resolution", "skybox",
                         "time1", "time2","time3", "time4", "displace","specularLight", "mousePull","mousePullWidth", "scale1",
-                        "scale2", "scale3", "scale4", "scale5", "scale6", "scale7", "size"]
+                        "scale2", "scale3", "scale4", "scale5", "scale6", "scale7", "reflection", "size"]
                     });
 
                 var refTexture = new BABYLON.Texture("ref.jpg", scene);
@@ -525,19 +527,21 @@ float snoise(vec3 v){
                 shaderMaterial.setVector2("resolution", new BABYLON.Vector2(window.innerWidth, window.innerHeight));
                 shaderMaterial.setFloat("gravityScale",0);
                 shaderMaterial.setTexture("skybox", skybox.material);
-                shaderMaterial.setFloat("time1", 1);
-                shaderMaterial.setFloat("time2", 1);
-                shaderMaterial.setFloat("time3", 1);
-                shaderMaterial.setFloat("time4", 1);
-                shaderMaterial.setFloat("displace", 0.2);
-                shaderMaterial.setFloat("scale1", 1.);
-                shaderMaterial.setFloat("scale2", 1.);
-                shaderMaterial.setFloat("scale3", 1.);
-                shaderMaterial.setFloat("scale4", 1.);
-                shaderMaterial.setFloat("scale5", 1.);
-                shaderMaterial.setFloat("scale6", 1.);
-                shaderMaterial.setFloat("scale7", 1.);
-                shaderMaterial.setFloat("size", 5);
+                shaderMaterial.setFloat("time1", .2);
+                shaderMaterial.setFloat("time2", 0);
+                shaderMaterial.setFloat("time3", 0);
+                shaderMaterial.setFloat("time4", 0);
+                shaderMaterial.setFloat("displace", 0.15);
+                shaderMaterial.setFloat("scale1", 2.);
+                shaderMaterial.setFloat("scale2", 2.);
+                shaderMaterial.setFloat("scale3", 0.);
+                shaderMaterial.setFloat("scale4", 2.);
+                shaderMaterial.setFloat("scale5", 0.);
+                shaderMaterial.setFloat("scale6", .5);
+                shaderMaterial.setFloat("scale7", 0.);
+                shaderMaterial.setFloat("size", 4.5);
+                shaderMaterial.setFloat("reflection", 0);
+                shaderMaterial.setFloat("specularLight", 0);
                 shaderMaterial.backFaceCulling = false;
 
                 for (var index = 0; index < meshes.length; index++) {
@@ -559,22 +563,23 @@ float snoise(vec3 v){
             var scene = createScene();
 
             var Shader = function() {
-              this.time1 = 1;
-              this.time2 = 1;
-              this.time3 = 1;
-              this.time4 = 1;
+              this.time1 = .2;
+              this.time2 = 0;
+              this.time3 = 0;
+              this.time4 = 0;
               this.mousePullWidth = 2.3;
               this.mousePull = .2;
               this.specularLight = 0;
-              this.displace = 0.2;
-              this.scale1 = 1;
-              this.scale2 = 1;
-              this.scale3 = 1;
-              this.scale4 = 1;
-              this.scale5 = 1;
-              this.scale6 = 1;
-              this.scale7 = 1;
-              this.size = 5;
+              this.displace = 0.15;
+              this.scale1 = 2;
+              this.scale2 = 2;
+              this.scale3 = 0;
+              this.scale4 = 2;
+              this.scale5 = 0;
+              this.scale6 = 0.5;
+              this.scale7 = 0;
+              this.size = 4.5;
+              this.reflection = 0;
             };
             var shader = new Shader();
             var gui = new dat.GUI();
@@ -625,6 +630,9 @@ float snoise(vec3 v){
             });
             gui.add(shader, 'size', 0, 5).step(0.05).onChange(function(value){
               scene.getMaterialByName("shader").setFloat("size", value);
+            });
+            gui.add(shader, 'reflection', 0, 1).step(0.05).onChange(function(value){
+              scene.getMaterialByName("shader").setFloat("reflection", value);
             });
 
 
