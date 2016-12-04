@@ -59,259 +59,7 @@
           varying vec4 vReflection;
           varying vec2 vUVsphere;
 
-          //  Classic Perlin 3D Noise
-//  by Stefan Gustavson
-//
-vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
-float permute(float x){return floor(mod(((x*34.0)+1.0)*x, 289.0));}
-vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
-float taylorInvSqrt(float r){return 1.79284291400159 - 0.85373472095314 * r;}
-vec3 fade(vec3 t) {return t*t*t*(t*(t*6.0-15.0)+10.0);}
 
-float cnoise(vec3 P){
-  vec3 Pi0 = floor(P); // Integer part for indexing
-  vec3 Pi1 = Pi0 + vec3(1.0); // Integer part + 1
-  Pi0 = mod(Pi0, 289.0);
-  Pi1 = mod(Pi1, 289.0);
-  vec3 Pf0 = fract(P); // Fractional part for interpolation
-  vec3 Pf1 = Pf0 - vec3(1.0); // Fractional part - 1.0
-  vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
-  vec4 iy = vec4(Pi0.yy, Pi1.yy);
-  vec4 iz0 = Pi0.zzzz;
-  vec4 iz1 = Pi1.zzzz;
-
-  vec4 ixy = permute(permute(ix) + iy);
-  vec4 ixy0 = permute(ixy + iz0);
-  vec4 ixy1 = permute(ixy + iz1);
-
-  vec4 gx0 = ixy0 / 7.0;
-  vec4 gy0 = fract(floor(gx0) / 7.0) - 0.5;
-  gx0 = fract(gx0);
-  vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0);
-  vec4 sz0 = step(gz0, vec4(0.0));
-  gx0 -= sz0 * (step(0.0, gx0) - 0.5);
-  gy0 -= sz0 * (step(0.0, gy0) - 0.5);
-
-  vec4 gx1 = ixy1 / 7.0;
-  vec4 gy1 = fract(floor(gx1) / 7.0) - 0.5;
-  gx1 = fract(gx1);
-  vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1);
-  vec4 sz1 = step(gz1, vec4(0.0));
-  gx1 -= sz1 * (step(0.0, gx1) - 0.5);
-  gy1 -= sz1 * (step(0.0, gy1) - 0.5);
-
-  vec3 g000 = vec3(gx0.x,gy0.x,gz0.x);
-  vec3 g100 = vec3(gx0.y,gy0.y,gz0.y);
-  vec3 g010 = vec3(gx0.z,gy0.z,gz0.z);
-  vec3 g110 = vec3(gx0.w,gy0.w,gz0.w);
-  vec3 g001 = vec3(gx1.x,gy1.x,gz1.x);
-  vec3 g101 = vec3(gx1.y,gy1.y,gz1.y);
-  vec3 g011 = vec3(gx1.z,gy1.z,gz1.z);
-  vec3 g111 = vec3(gx1.w,gy1.w,gz1.w);
-
-  vec4 norm0 = taylorInvSqrt(vec4(dot(g000, g000), dot(g010, g010), dot(g100, g100), dot(g110, g110)));
-  g000 *= norm0.x;
-  g010 *= norm0.y;
-  g100 *= norm0.z;
-  g110 *= norm0.w;
-  vec4 norm1 = taylorInvSqrt(vec4(dot(g001, g001), dot(g011, g011), dot(g101, g101), dot(g111, g111)));
-  g001 *= norm1.x;
-  g011 *= norm1.y;
-  g101 *= norm1.z;
-  g111 *= norm1.w;
-
-  float n000 = dot(g000, Pf0);
-  float n100 = dot(g100, vec3(Pf1.x, Pf0.yz));
-  float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z));
-  float n110 = dot(g110, vec3(Pf1.xy, Pf0.z));
-  float n001 = dot(g001, vec3(Pf0.xy, Pf1.z));
-  float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z));
-  float n011 = dot(g011, vec3(Pf0.x, Pf1.yz));
-  float n111 = dot(g111, Pf1);
-
-  vec3 fade_xyz = fade(Pf0);
-  vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z);
-  vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);
-  float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);
-  return 2.2 * n_xyz;
-}
-
-//  Simplex 3D Noise
-//  by Ian McEwan, Ashima Arts
-//
-
-float snoise(vec3 v){
-  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
-  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
-
-// First corner
-  vec3 i  = floor(v + dot(v, C.yyy) );
-  vec3 x0 =   v - i + dot(i, C.xxx) ;
-
-// Other corners
-  vec3 g = step(x0.yzx, x0.xyz);
-  vec3 l = 1.0 - g;
-  vec3 i1 = min( g.xyz, l.zxy );
-  vec3 i2 = max( g.xyz, l.zxy );
-
-  //  x0 = x0 - 0. + 0.0 * C
-  vec3 x1 = x0 - i1 + 1.0 * C.xxx;
-  vec3 x2 = x0 - i2 + 2.0 * C.xxx;
-  vec3 x3 = x0 - 1. + 3.0 * C.xxx;
-
-// Permutations
-  i = mod(i, 289.0 );
-  vec4 p = permute( permute( permute(
-             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
-           + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
-           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
-
-// Gradients
-// ( N*N points uniformly over a square, mapped onto an octahedron.)
-  float n_ = 1.0/7.0; // N=7
-  vec3  ns = n_ * D.wyz - D.xzx;
-
-  vec4 j = p - 49.0 * floor(p * ns.z *ns.z);  //  mod(p,N*N)
-
-  vec4 x_ = floor(j * ns.z);
-  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
-
-  vec4 x = x_ *ns.x + ns.yyyy;
-  vec4 y = y_ *ns.x + ns.yyyy;
-  vec4 h = 1.0 - abs(x) - abs(y);
-
-  vec4 b0 = vec4( x.xy, y.xy );
-  vec4 b1 = vec4( x.zw, y.zw );
-
-  vec4 s0 = floor(b0)*2.0 + 1.0;
-  vec4 s1 = floor(b1)*2.0 + 1.0;
-  vec4 sh = -step(h, vec4(0.0));
-
-  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
-  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
-
-  vec3 p0 = vec3(a0.xy,h.x);
-  vec3 p1 = vec3(a0.zw,h.y);
-  vec3 p2 = vec3(a1.xy,h.z);
-  vec3 p3 = vec3(a1.zw,h.w);
-
-//Normalise gradients
-  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-  p0 *= norm.x;
-  p1 *= norm.y;
-  p2 *= norm.z;
-  p3 *= norm.w;
-
-// Mix final noise value
-  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-  m = m * m;
-  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),
-                                dot(p2,x2), dot(p3,x3) ) );
-}
-
-
-
-
-
-vec4 grad4(float j, vec4 ip){
-  const vec4 ones = vec4(1.0, 1.0, 1.0, -1.0);
-  vec4 p,s;
-
-  p.xyz = floor( fract (vec3(j) * ip.xyz) * 7.0) * ip.z - 1.0;
-  p.w = 1.5 - dot(abs(p.xyz), ones.xyz);
-  s = vec4(lessThan(p, vec4(0.0)));
-  p.xyz = p.xyz + (s.xyz*2.0 - 1.0) * s.www;
-
-  return p;
-}
-
-float snoise(vec4 v){
-  const vec2  C = vec2( 0.138196601125010504,  // (5 - sqrt(5))/20  G4
-                        0.309016994374947451); // (sqrt(5) - 1)/4   F4
-// First corner
-  vec4 i  = floor(v + dot(v, C.yyyy) );
-  vec4 x0 = v -   i + dot(i, C.xxxx);
-
-// Other corners
-
-// Rank sorting originally contributed by Bill Licea-Kane, AMD (formerly ATI)
-  vec4 i0;
-
-  vec3 isX = step( x0.yzw, x0.xxx );
-  vec3 isYZ = step( x0.zww, x0.yyz );
-//  i0.x = dot( isX, vec3( 1.0 ) );
-  i0.x = isX.x + isX.y + isX.z;
-  i0.yzw = 1.0 - isX;
-
-//  i0.y += dot( isYZ.xy, vec2( 1.0 ) );
-  i0.y += isYZ.x + isYZ.y;
-  i0.zw += 1.0 - isYZ.xy;
-
-  i0.z += isYZ.z;
-  i0.w += 1.0 - isYZ.z;
-
-  // i0 now contains the unique values 0,1,2,3 in each channel
-  vec4 i3 = clamp( i0, 0.0, 1.0 );
-  vec4 i2 = clamp( i0-1.0, 0.0, 1.0 );
-  vec4 i1 = clamp( i0-2.0, 0.0, 1.0 );
-
-  //  x0 = x0 - 0.0 + 0.0 * C
-  vec4 x1 = x0 - i1 + 1.0 * C.xxxx;
-  vec4 x2 = x0 - i2 + 2.0 * C.xxxx;
-  vec4 x3 = x0 - i3 + 3.0 * C.xxxx;
-  vec4 x4 = x0 - 1.0 + 4.0 * C.xxxx;
-
-// Permutations
-  i = mod(i, 289.0);
-  float j0 = permute( permute( permute( permute(i.w) + i.z) + i.y) + i.x);
-  vec4 j1 = permute( permute( permute( permute (
-             i.w + vec4(i1.w, i2.w, i3.w, 1.0 ))
-           + i.z + vec4(i1.z, i2.z, i3.z, 1.0 ))
-           + i.y + vec4(i1.y, i2.y, i3.y, 1.0 ))
-           + i.x + vec4(i1.x, i2.x, i3.x, 1.0 ));
-// Gradients
-// ( 7*7*6 points uniformly over a cube, mapped onto a 4-octahedron.)
-// 7*7*6 = 294, which is close to the ring size 17*17 = 289.
-
-  vec4 ip = vec4(1.0/294.0, 1.0/49.0, 1.0/7.0, 0.0) ;
-
-  vec4 p0 = grad4(j0,   ip);
-  vec4 p1 = grad4(j1.x, ip);
-  vec4 p2 = grad4(j1.y, ip);
-  vec4 p3 = grad4(j1.z, ip);
-  vec4 p4 = grad4(j1.w, ip);
-
-// Normalise gradients
-  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-  p0 *= norm.x;
-  p1 *= norm.y;
-  p2 *= norm.z;
-  p3 *= norm.w;
-  p4 *= taylorInvSqrt(dot(p4,p4));
-
-// Mix contributions from the five corners
-  vec3 m0 = max(0.6 - vec3(dot(x0,x0), dot(x1,x1), dot(x2,x2)), 0.0);
-  vec2 m1 = max(0.6 - vec2(dot(x3,x3), dot(x4,x4)            ), 0.0);
-  m0 = m0 * m0;
-  m1 = m1 * m1;
-  return 49.0 * ( dot(m0*m0, vec3( dot( p0, x0 ), dot( p1, x1 ), dot( p2, x2 )))
-               + dot(m1*m1, vec2( dot( p3, x3 ), dot( p4, x4 ) ) ) ) ;
-
-}
-
-#define NUM_OCTAVES 2
-
-float fbm(vec4 x) {
-    float v = 0.0;
-    float a = 0.5;
-    vec4 shift = vec4(100);
-    for (int i = 0; i < NUM_OCTAVES; ++i) {
-        v += a * snoise(x);
-        x = x * 2.0 + shift;
-        a *= 0.5;
-    }
-    return v;
-}
 
 
 
@@ -347,9 +95,8 @@ float fbm(vec4 x) {
 
               p = (p+3.)*4.;
 
-              float t = time/3.*time1;
+              float t = time/3.;
 
-              // Layered, sinusoidal feedback, with time component.
               for (int i=0; i<3; i++){
                   p += cos( p.yzx*3. + vec3(t,1.,1.57))/3.;
                   p += sin( p.yzx + t + vec3(1.57,t,1.))/2.;
@@ -357,8 +104,22 @@ float fbm(vec4 x) {
               }
               vec3 f = mod(p,2.)/2.;
               vec3 u = f * f * (3.0 - 2.0 * f );
-              return mix(2.*u-1., mod(p,2.)-1., detail); // Range: [vec2(-1), vec2(1)]
+              return mix(2.*u-1., mod(p,2.)-1., 0.7);
 
+          }
+
+          #define NUM_OCTAVES 2
+
+          float fbm(vec3 x) {
+              float v = 0.0;
+              float a = 0.5;
+              vec3 shift = vec3(100.);
+              for (int i = 0; i < NUM_OCTAVES; ++i) {
+                  v += a * length(W(x));
+                  x = x * 2.0 + shift;
+                  a *= 0.5;
+              }
+              return v;
           }
 
           vec3 parametric(float newu, float newv, float mousePullWidth, float mousePullHeight) {
@@ -372,58 +133,18 @@ float fbm(vec4 x) {
 
                 vec2 screen = mouse/resolution * 2.0 - 1.0;
 
-                vec3 tan;
-                tan.x = sin(newu)*cos(newv+0.01);
-                tan.y = sin(newu)*sin(newv+0.01);
-                tan.z = cos(newu);
-                tan*=size/2.;
-                tan -= newValue;
-                tan = normalize(tan);
+                float displaceX = 1./20.*length(W(newValue/7.));
+                vec3 displaced = vec3(displaceX);
+                newValue += normVal * displaceX;
 
-                // GETS MY APPROVAL
-                //newValue += 0.05 * normVal * sin(2.3*newValue.y + time*2.);
-                //newValue += normVal * .08 * cnoise(vec3(newValue.x*.8+21.*cnoise(vec3(time/27. +13.5)),newValue.y*2.2+time/7.+19.*cnoise(vec3(time/31.+2.1)),newValue.z*.8+20.*cnoise(vec3(time/28.+2.5))));
-                //newValue += normVal * .09 * cnoise(vec3(newValue.x*1.+27.424*cnoise(vec3(time/21. +10.5)),newValue.y*2.0+time/10.256+15.*cnoise(vec3(-time/26.3+6.1)),newValue.z*.8567-15.*cnoise(vec3(time/22.4623+32.5))));
+                vColor = vec3(displaceX);
 
-                //float displaceX = snoise(time1*time+0.822+scale1*vec3(.75*scale7*snoise(newValue/5. - time2*time/4.), scale2*newValue.y/2., scale4*newValue.z/2.));
-                //float displaceY = snoise(time1*time+.76+scale8*vec3(scale2*newValue.y/2., scale5*.75*snoise(newValue/3. - time3*time/5.), scale4*newValue.z/2.));
-                //float displaceZ = snoise(time1*time+0.8+scale9*vec3(scale3*newValue.x/2.,scale2*newValue.y/2.,.75*scale6*snoise(newValue/5. - time4*time/6.)));
-                //vec3 displaced = vec3(displaceX, displaceY, displaceZ);
-
-                float displaceX = scale9/10.*length(W(scale8*newValue/14.));
-
-                float displaceY = displace*fbm( vec4(newValue*vec3(scale1,scale2,scale3)+time*vec3(time2,time3,time4), time1*time) );
-
-                vec3 displaced = vec3( mix(displaceX,displaceY,1.-scale4) );
-
-                //displace += 0.25*snoise(displace+time/4.);
-                vColor = displaced;
-                //displace = smoothstep(vec3(-.5), vec3(.8), displace);
-                newValue += normVal * displaced;
-                //float displace = .03 * (1.+cnoise(vec3(newValue.x*1.+27.424*cnoise(vec3(time/21. +10.5)),newValue.y*2.0+time/10.256+15.*cnoise(vec3(-time/26.3+6.1)),newValue.z*.8567-15.*cnoise(vec3(time/22.4623+32.5)))));
-
-
-                float u = newu / M_PI;
-                float v = (1.-(newv / M_PI / 2.));
-                float imageheight = 1.;
-                float imagewidth = 1.;
-                float theta = M_PI*(v - 0.5);//M_PI * (v - (imageheight-1.)/2.0) / (imageheight-1.);
-                float phi  =  M_PI*(u*2.-1.);//M_PI * 2. * (u - imagewidth/2.0) / imagewidth;
-                float phi2 = phi * cos(theta);
-                float i2  = phi2 * imagewidth / M_PI / 2. + imagewidth/2.;
-                //vUV = vec2(v*4.,i2*4. - .5);
-
-
-
-                //newValue += normVal * displace;
                 // ROTATIONS
                 newValue = ( rotationMatrix(vec3(0.0,0.0,1.0), screen.y/2.)*vec4(newValue,1.0) ).xyz;
                 newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/2.)*vec4(newValue,1.0) ).xyz;
-                //newValue += .001*normVal*( cnoise(vec3(newValue*40.+time/4.)));
-                //newValue = ( rotationMatrix(vec3(1.,0.,0.), time/4.)*vec4(newValue,1.0) ).xyz;
 
-                newValue += normVal*(mousePullHeight+displaced*.01)*interpolate(max(0., (mousePullWidth-distance(pickPoint,newValue))/mousePullWidth));
-                //newValue = vec3(4.0,newv/M_PI/2.,newu/M_PI);
+                //newValue += normVal*(mousePullHeight+displaced)*interpolate(max(0., (mousePullWidth-distance(pickPoint,newValue))/mousePullWidth));
+
                 return newValue;
 
               }
@@ -504,7 +225,7 @@ float fbm(vec4 x) {
               vec3 lightVectorW = normalize(vLightPosition - vPositionW);
               vec3 color = texture2D(textureSampler, vUV).rgb;
               color = vec3(1.0,1.0,1.0);
-              color = texture2D(textureSampler, mix(vUV,vReflection.xz*1.25,1.)).rgb;
+              color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.5,1.)).rgb;
               color *= (color+.2);
               color = mix(vec3(1.),color,reflection);
               //color = texture2D(textureSampler, vUV).rgb;
@@ -740,34 +461,12 @@ float fbm(vec4 x) {
               this.octaves = 2;
               this.detail = .5;
             };
+
             var shader = new Shader();
             var gui = new dat.GUI();
-            gui.add(shader, 'displace', 0, .5).name('A_displace').step(0.01).onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("displace", value);
-            });
+
             gui.add(shader, 'time1', 0, 4).step(0.05).onChange(function(value){
               scene.getMaterialByName("shader").setFloat("time1", value);
-            });
-            gui.add(shader, 'time2', 0, 3).step(0.05).onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("time2", value);
-            });
-            gui.add(shader, 'time3', 0, 3).step(0.05).onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("time3", value);
-            });
-            gui.add(shader, 'time4', 0, 3).step(0.05).onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("time4", value);
-            });
-            gui.add(shader, 'scale1', 0, 3).step(0.01).name("A_scale1").onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("scale1", value);
-            });
-            gui.add(shader, 'scale2', 0, 3).step(0.01).name("A_scale2").onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("scale2", value);
-            });
-            gui.add(shader, 'scale3', 0, 3).step(0.01).name("A_scale3").onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("scale3", value);
-            });
-            gui.add(shader, 'scale4', 0, 1).step(.03).name("A_B_slider").onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("scale4", value);
             });
             gui.add(shader, 'mousePull', 0, 1).step(0.05).onChange(function(value){
               scene.getMaterialByName("shader").setFloat("mousePull", value);
@@ -778,20 +477,8 @@ float fbm(vec4 x) {
             gui.add(shader, 'specularLight', 0, 1.5).step(0.05).onChange(function(value){
               scene.getMaterialByName("shader").setFloat("specularLight", value);
             });
-            gui.add(shader, 'size', 0, 5).step(0.05).onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("size", value);
-            });
             gui.add(shader, 'reflection', 0, 1).step(0.05).onChange(function(value){
               scene.getMaterialByName("shader").setFloat("reflection", value);
-            });
-            gui.add(shader, 'scale8', 0, 5).step(0.05).name('B_scale').onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("scale8", value);
-            });
-            gui.add(shader, 'scale9', 0, 5).step(0.05).name('B_displace').onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("scale9", value);
-            });
-            gui.add(shader, 'detail', 0, 1).step(0.05).name('B_sharpness').onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("detail", value);
             });
 
 
