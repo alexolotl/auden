@@ -37,7 +37,7 @@ function init() {
 
 	//var geometry = new THREE.PlaneBufferGeometry( 2, 2 );
 
-	var texture = THREE.ImageUtils.loadTexture('../amiga2.jpg');
+	var texture = THREE.ImageUtils.loadTexture('amiga2.jpg');
 	texture.minFilter = THREE.NearestFilter;
 
 	uniforms = {
