@@ -4,34 +4,38 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
     <title>Auden Norbury Sphere</title>
-    <!-- Babylon.js -->
-    <script src="babylon.custom.js"></script>
-    <script src="hand.minified-1.2.js"></script>
+
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+        body {
+            background-color: #ffffff;
+            margin: 0;
+            overflow: hidden;
+            font-family: arial;
+        }
+    </style>
+
+    <script src="js/three.min.js"></script>
+    <script src="js/OrbitControls.js"></script>
+		<script src="js/Detector.js"></script>
+		<script src="js/libs/stats.min.js"></script>
     <script type="text/javascript" src="dat.gui.min.js"></script>
+
     <script id="vertex" type="x-shader/x-vertex">
           precision highp float;
 
           #define M_PI 3.14159265359
 
-          // Attributes
-          attribute vec3 position;
-          attribute vec3 normal;
-          attribute vec2 uv;
-
           // Uniforms
-          uniform mat4 worldViewProjection;
           uniform float time;
           uniform vec2 mouse;
+          uniform vec2 dampenedMouse;
           uniform vec3 pickPoint;
-          uniform float gravityScale;
           uniform vec2 resolution;
-          uniform mat4 model_matrix;
-          uniform mat4 world;
-          uniform vec3 vEyePosition;
           uniform float time1;
-          uniform float time2;
-          uniform float time3;
-          uniform float time4;
           uniform float mousePull;
           uniform float mousePullWidth;
           uniform float displace;
@@ -39,25 +43,15 @@
           uniform float scale2;
           uniform float scale3;
           uniform float scale4;
-          uniform float scale5;
-          uniform float scale6;
-          uniform float scale7;
-          uniform float scale8;
-          uniform float scale9;
+          uniform float u_bump;
           uniform float size;
-          uniform float reflection;
-          uniform float detail;
-          uniform float octaves;
 
           // Varying
           varying vec3 vPosition;
           varying vec3 vNormal;
           varying vec2 vUV;
           varying vec3 vColor;
-          varying vec2 vR;
-          varying float vColor0;
           varying vec4 vReflection;
-          varying vec2 vUVsphere;
 
 
 
@@ -102,8 +96,12 @@
                   p += sin( p.yzx + t + vec3(1.57,t,1.))/2.;
                   p *= 1.3;
               }
+
               vec3 f = mod(p,2.)/2.;
               vec3 u = f * f * (3.0 - 2.0 * f );
+
+
+
               return mix(2.*u-1., mod(p,2.)-1., 0.7);
 
           }
@@ -122,61 +120,103 @@
               return v;
           }
 
-          vec3 parametric(float newu, float newv, float mousePullWidth, float mousePullHeight) {
+          vec3 parametric(float newu, float newv) {
                 vec3 newValue;
-
                 newValue.x = sin(newu)*cos(newv);
                 newValue.y = sin(newu)*sin(newv);
                 newValue.z = cos(newu);
                 newValue*=size/2.;
+                return newValue;
+              }
+
+          float warp(vec3 newValue) {
+            return length(W(newValue/7.));
+          }
+
+          vec3 deform(vec3 newValue) {
+                //newValue = ( rotationMatrix(vec3(0.0,0.0,1.0), M_PI/2.)*vec4(newValue,1.0) ).xyz;
+
                 vec3 normVal = normalize(newValue);
 
-                vec2 screen = mouse/resolution * 2.0 - 1.0;
+                float displaceX = scale2*1./10.*warp(newValue);
 
-                float displaceX = 1./20.*length(W(newValue/7.));
                 vec3 displaced = vec3(displaceX);
                 newValue += normVal * displaceX;
 
                 vColor = vec3(displaceX);
 
-                // ROTATIONS
-                newValue = ( rotationMatrix(vec3(0.0,0.0,1.0), screen.y/2.)*vec4(newValue,1.0) ).xyz;
-                newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/2.)*vec4(newValue,1.0) ).xyz;
-
-                //newValue += normVal*(mousePullHeight+displaced)*interpolate(max(0., (mousePullWidth-distance(pickPoint,newValue))/mousePullWidth));
-
                 return newValue;
+          }
 
-              }
+          vec3 rotate(vec3 newValue) {
+              vec2 screen = dampenedMouse/resolution * 2.0 - 1.0;
+              vec2 screenActual = mouse/resolution * 2.0 - 1.0;
+              // ROTATIONS
+              //newValue.x -= .1*screen.x + .4*sin((screenActual.x-screen.x)/2.)*length(screen);
+              //newValue.y += .1*screen.y + .4*sin((screenActual.y-screen.y)/2.)*length(screen);
+              newValue.x -= 0.2*(screenActual.x-screen.x);
+              newValue.y += .2*(screenActual.y-screen.y);
+              newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), screen.y/3.)*vec4(newValue,1.0) ).xyz;
+              newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/3.)*vec4(newValue,1.0) ).xyz;
+
+              return newValue;
+          }
+
+          vec3 lift(vec3 newValue, vec3 normVal, float mousePullWidth, float mousePullHeight) {
+              newValue += normVal*mousePullHeight*interpolate(max(0., (mousePullWidth-distance(pickPoint,newValue))/mousePullWidth));
+              return newValue;
+          }
 
 
           void main(void) {
               float mousePullHeight = mousePull;
-
               vec3 v = position;
-
-
 
               vUV.x = uv.x * M_PI;
               vUV.y = uv.y * M_PI*2.0;
-              vec3 newPosition = parametric(vUV.x, vUV.y, mousePullWidth, mousePullHeight);
+              vec3 newPosition = parametric(vUV.x, vUV.y);
+              vec3 norm1 = normalize(newPosition);
+              //newPosition = rotate(newPosition);
+              newPosition = deform(newPosition);
+              vec3 origNP = newPosition;
+              newPosition = rotate(newPosition);
+              //newPosition = rotate(newPosition);
+              //newPosition = lift(newPosition, norm1, mousePullWidth, mousePull);
+
               float smallvalue = 0.01;
-              vec3 neighbor1 = parametric(vUV.x+smallvalue, vUV.y, mousePullWidth, mousePullHeight);
-              vec3 neighbor2 = parametric(vUV.x, vUV.y+smallvalue, mousePullWidth, mousePullHeight);
+              vec3 neighbor1 = parametric(vUV.x+smallvalue, vUV.y);
+              vec3 norm2 = normalize(neighbor1);
+              //neighbor1 = rotate(neighbor1);
+              neighbor1 = deform(neighbor1);
+              neighbor1 = rotate(neighbor1);
+              //neighbor1 = lift(neighbor1, norm2, mousePullWidth, mousePull);
+
+              vec3 neighbor2 = parametric(vUV.x, vUV.y+smallvalue);
+              vec3 norm3 = normalize(neighbor2);
+              //neighbor2 = rotate(neighbor2);
+              neighbor2 = deform(neighbor2);
+              neighbor2 = rotate(neighbor2);
+              //neighbor2 = lift(neighbor2, norm3, mousePullWidth, mousePull);
+
               vec3 tangent = neighbor1 - newPosition;
               vec3 bitangent = neighbor2 - newPosition;
-              vNormal = normalize(cross(tangent, bitangent));
+              vec3 parametricNormal = normalize(cross(tangent, bitangent));
 
-              vReflection = reflect(-normalize(world*vec4(newPosition,1.0) - vec4(vEyePosition,1.0)), vec4(vNormal,0.0));
+              float delta = 0.1*scale1;
+              vec3 rotated = origNP;//rotate(newPosition);
+              float displace = warp(rotated);
+              float gradX = ( warp(rotated + vec3(delta,0.,0.) ) - displace ) / delta;
+              float gradY = ( warp(rotated + vec3(0.,delta,0.) ) - displace ) / delta;
+              float gradZ = ( warp(rotated + vec3(0.,0.,delta) ) - displace ) / delta;
 
-              //v += normal*sin(6.0*(v.x+v.y+v.z) + time*4.);
+              vNormal = normalize(parametricNormal - rotate(vec3(gradX,gradY,gradZ))*u_bump);
+              vNormal += scale3*W(vNormal*scale4);
 
-              gl_Position = worldViewProjection * vec4(newPosition, 1.0);
               vPosition = newPosition;
 
-              //vPosition = position;
-              //vNormal = normal;
-              //vUV = uv;
+              vReflection = reflect(-normalize(modelMatrix*vec4(newPosition,1.0) - vec4(cameraPosition,1.0)), vec4(vNormal,0.0));
+
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
           }
     </script>
     <script id="fragment" type="x-shader/x-fragment">
@@ -189,42 +229,35 @@
           varying vec2 vUV;
           varying vec3 vColor;
           varying vec2 vR;
-          varying float vColor0;
           varying vec4 vReflection;
-          varying vec2 vUVsphere;
 
 
           // Uniforms
-          uniform mat4 world;
           uniform float time;
           uniform float specularLight;
           uniform float reflection;
-
-          // Refs
-          uniform vec3 cameraPosition;
           uniform sampler2D textureSampler;
           uniform vec3 pickPoint;
-          //uniform samplerCube skybox;
+          uniform mat4 modelMatrix;
 
           mat2 rotate2d(in float _angle) {
               return mat2(cos(_angle),-sin(_angle),sin(_angle),cos(_angle));
           }
 
           void main(void) {
-              vec3 vLightPosition = vec3(10,20,20);
+            vec2 newUv = vUV;
+              vec3 vLightPosition = vec3(15,30,30);
               //vLightPosition = vec3(8.0,2.0*pickPoint.yz);
-              vLightPosition = vec3(6.0,3.0,4.0);
-              vLightPosition = vec3(0.,5.,0.);
 
               // World values
-              vec3 vPositionW = vec3(world * vec4(vPosition, 1.0));
-              vec3 vNormalW = normalize(vec3(world * vec4(vNormal, 0.0)));
+              vec3 vPositionW = vec3(modelMatrix * vec4(vPosition, 1.0));
+              vec3 vNormalW = normalize(vec3(modelMatrix * vec4(vNormal, 0.0)));
               vec3 viewDirectionW = normalize(cameraPosition - vPositionW);
 
               // Light
               vec3 lightVectorW = normalize(vLightPosition - vPositionW);
-              vec3 color = texture2D(textureSampler, vUV).rgb;
-              color = vec3(1.0,1.0,1.0);
+              vec3 color = vec3(1.);//texture2D(textureSampler, vUV).rgb;
+              color = vec3(vColor);
               color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.5,1.)).rgb;
               color *= (color+.2);
               color = mix(vec3(1.),color,reflection);
@@ -238,7 +271,7 @@
               float emissive = 1.;
 
               // diffuse
-              float ndl = max(0., dot(vNormalW, normalize(vec3(0.,5.,0.))));
+              float ndl = max(0., dot(vNormalW, lightVectorW));
 
               //ndl += .5*max(0., dot(vNormalW, normalize(vec3(0.,1.,0.))));
               //ndl += .5*max(0., dot(vNormalW, normalize(vec3(.2,0.,-1.))));
@@ -249,334 +282,12 @@
               float specComp = max(0., dot(vNormalW, angleW));
               specComp = pow(specComp, 512.) * 0.05;
 
-              gl_FragColor = vec4(mix(emissive*color, ndl*color*1. + specComp*5.*specularLight, 0.66),1.);//emissive*color + color*ndl*.3 + vec3(specComp)*.3 + .65*(1.15-color)*dot(normalize(vPositionW-vLightPosition),vNormal), 1.);
+              gl_FragColor = vec4(mix(emissive*color, ndl*color*.9 + specComp*5.*specularLight, 0.66),1.);//emissive*color + color*ndl*.3 + vec3(specComp)*.3 + .65*(1.15-color)*dot(normalize(vPositionW-vLightPosition),vNormal), 1.);
           }
     </script>
-    <style>
-        html, body {
-            overflow: hidden;
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
-
-        #renderCanvas {
-            width: 100%;
-            height: 100%;
-            touch-action: none;
-        }
-    </style>
 </head>
 <body>
-    <canvas id="renderCanvas"></canvas>
-    <script>
-        if (BABYLON.Engine.isSupported()) {
-            var canvas = document.getElementById("renderCanvas");
-            var engine = new BABYLON.Engine(canvas, true);
-
-            var gravityScale = 0;
-            var dampenedMouse = new BABYLON.Vector2(0,0);
-            var mouse = new BABYLON.Vector2(0,0);
-            var pickPoint = new BABYLON.Vector3(0,0,0);
-            var dampenedPickpoint = new BABYLON.Vector3(0,0,0);
-
-            var createScene = function() {
-                var scene = new BABYLON.Scene(engine);
-                var meshes = [];
-                var camera = new BABYLON.ArcRotateCamera("Camera", 0, Math.PI / 2, 12, BABYLON.Vector3.Zero(), scene);
-
-
-                var parameters = {
-                  edge_blur: .6,
-                  chromatic_aberration: 1.0,
-                  distortion: .5,
-                  dof_focus_distance: 10.2,
-                  dof_aperture: .4,			// set this very high for tilt-shift effect
-                  grain_amount: 1.0,
-                  dof_pentagon: true,
-                  dof_gain: 1.0,
-                  dof_threshold: 1.0,
-                  dof_darken: 0.05
-                };
-                //var lensEffect = new BABYLON.LensRenderingPipeline('lensEffects', parameters, scene, 1.0, camera);
-
-
-                camera.attachControl(canvas, false);
-                camera.lowerRadiusLimit = 1;
-                camera.minZ = 1.0;
-
-                function selectMesh(index) {
-                    switch (index) {
-                        case 0:
-                            // Creating sphere
-                            meshes.push(BABYLON.Mesh.CreateSphere("mesh", 512, 5, scene));
-                            break;
-                        case 1:
-                            // Creating Torus
-                            meshes.push(BABYLON.Mesh.CreateTorus("mesh", 5, 1, 32, scene));
-                            break;
-                        case 2:
-                            // Creating Torus knot
-                            meshes.push(BABYLON.Mesh.CreateTorusKnot("mesh", 2, 0.5, 128, 64, 2, 3, scene));
-                            break;
-                        case 3:
-                            meshes.push(BABYLON.Mesh.CreateGroundFromHeightMap("mesh", "heightMap.png", 8, 8, 100, 0, 3, scene, false));
-                            break;
-                    }
-                };
-
-                BABYLON.Effect.ShadersStore["customVertexShader"]= document.getElementById("vertex").textContent;
-
-                BABYLON.Effect.ShadersStore["customFragmentShader"]= document.getElementById("fragment").textContent;
-
-                selectMesh(0);
-                var plane = BABYLON.Mesh.CreatePlane("plane", 30.0, scene, false, BABYLON.Mesh.DEFAULTSIDE);
-                plane.material = new BABYLON.StandardMaterial("transparent", scene);
-                plane.rotation.y = -Math.PI/2;
-                plane.material.alpha = 0;
-/*
-                // Skybox
-                var skybox = BABYLON.Mesh.CreateBox("skyBox", 1000.0, scene);
-                var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
-                skyboxMaterial.backFaceCulling = false;
-                skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("assets/skybox/skybox", scene);
-                skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
-                skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
-                skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-                skybox.material = skyboxMaterial;
-                skybox.material.alpha = 0;
-
-
-
-                var ground = BABYLON.Mesh.CreatePlane("ground", 300.0, scene, false, BABYLON.Mesh.DEFAULTSIDE);
-                ground.material = new BABYLON.StandardMaterial("white", scene);
-                ground.material.diffuseColor = new BABYLON.Color3(1, 1, 1);
-                ground.rotation.x = Math.PI/2;
-                ground.position.y = -6;
-                ground.receiveShadows = true;
-
-                var light0 = new BABYLON.PointLight("Omni0", new BABYLON.Vector3(48, 24, 20), scene);
-                light0.diffuse = new BABYLON.Color3(1, 1, 1);
-                light0.specular = new BABYLON.Color3(1, 1, 1);
-                light0.intensity = 10;
-
-                var invisibleShadowSphere = BABYLON.Mesh.CreateSphere("mesh", 56, 2.5, scene);
-
-
-                var shadowGenerator = new BABYLON.ShadowGenerator(1024, light0);
-                shadowGenerator.getShadowMap().renderList.push(invisibleShadowSphere);
-                //shadowGenerator.useVarianceShadowMap = true;
-                //shadowGenerator.usePoissonSampling = true;
-                shadowGenerator.useBlurVarianceShadowMap = true;
-*/
-
-                // Compile
-                var shaderMaterial = new BABYLON.ShaderMaterial("shader", scene, {
-                    vertex: "custom",
-                    fragment: "custom",
-                },
-                    {
-                        attributes: ["position", "normal", "uv"],
-                        uniforms: ["world", "worldView", "worldViewProjection", "view",
-                        "projection", "mouse", "pickPoint", "gravityScale", "resolution", "skybox",
-                        "time1", "time2","time3", "time4", "displace","specularLight", "mousePull","mousePullWidth", "scale1",
-                        "scale2", "scale3", "scale4", "scale5", "scale6", "scale7", "scale8", "scale9", "reflection", "size",
-                        "octaves", "detail"]
-                    });
-
-                var refTexture = new BABYLON.Texture("ref.jpg", scene);
-                refTexture.wrapU = BABYLON.Texture.CLAMP_ADDRESSMODE;
-                refTexture.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
-
-                var mainTexture = new BABYLON.Texture("amiga.jpg", scene);
-
-                shaderMaterial.setTexture("textureSampler", mainTexture);
-                shaderMaterial.setVector3("vEyePosition", scene.activeCamera.position);
-                shaderMaterial.setTexture("refSampler", refTexture);
-                shaderMaterial.setFloat("time", 0);
-                shaderMaterial.setVector3("cameraPosition", BABYLON.Vector3.Zero());
-                shaderMaterial.setVector2("mouse", BABYLON.Vector2.Zero());
-                shaderMaterial.setVector3("pickPoint", BABYLON.Vector3.Zero());
-                shaderMaterial.setVector2("resolution", new BABYLON.Vector2(window.innerWidth, window.innerHeight));
-                shaderMaterial.setFloat("gravityScale",0);
-                //shaderMaterial.setTexture("skybox", skybox.material);
-                shaderMaterial.setFloat("time1", 1.2);
-                shaderMaterial.setFloat("time2", .2);
-                shaderMaterial.setFloat("time3", .2);
-                shaderMaterial.setFloat("time4", .2);
-                shaderMaterial.setFloat("displace", 0.19);
-                shaderMaterial.setFloat("scale1", 1.);
-                shaderMaterial.setFloat("scale2", 1.);
-                shaderMaterial.setFloat("scale3", 1.);
-                shaderMaterial.setFloat("scale4", .0);
-                shaderMaterial.setFloat("scale5", 0.);
-                shaderMaterial.setFloat("scale6", .5);
-                shaderMaterial.setFloat("scale7", 0.);
-                shaderMaterial.setFloat("scale8", 2.5);
-                shaderMaterial.setFloat("scale9", 1.);
-                shaderMaterial.setFloat("size", 4.5);
-                shaderMaterial.setFloat("reflection", 0);
-                shaderMaterial.setFloat("specularLight", 0);
-                shaderMaterial.setFloat("detail", 0.5);
-                shaderMaterial.setFloat("octaves", 2);
-                shaderMaterial.backFaceCulling = false;
-
-                for (var index = 0; index < meshes.length; index++) {
-                    var mesh = meshes[index];
-                    mesh.material = shaderMaterial;
-                }
-                mesh.isPickable = true;
-
-
-
-
-
-
-                return scene;
-            }
-
-            var scene = createScene();
-
-            var Shader = function() {
-              this.time1 = 1.2;
-              this.time2 = 0;
-              this.time3 = 0;
-              this.time4 = 0;
-              this.mousePullWidth = 2.3;
-              this.mousePull = .2;
-              this.specularLight = 0;
-              this.displace = 0.15;
-              this.scale1 = 1;
-              this.scale2 = 1;
-              this.scale3 = 1;
-              this.scale4 = 0;
-              this.scale5 = 0;
-              this.scale6 = 0.5;
-              this.scale7 = 0;
-              this.scale8 = 2.5;
-              this.scale9 = 1;
-              this.size = 4.5;
-              this.reflection = 0;
-              this.octaves = 2;
-              this.detail = .5;
-            };
-
-            var shader = new Shader();
-            var gui = new dat.GUI();
-
-            gui.add(shader, 'time1', 0, 4).step(0.05).onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("time1", value);
-            });
-            gui.add(shader, 'mousePull', 0, 1).step(0.05).onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("mousePull", value);
-            });
-            gui.add(shader, 'mousePullWidth', .25, 5).step(0.05).onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("mousePullWidth", value);
-            });
-            gui.add(shader, 'specularLight', 0, 1.5).step(0.05).onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("specularLight", value);
-            });
-            gui.add(shader, 'reflection', 0, 1).step(0.05).onChange(function(value){
-              scene.getMaterialByName("shader").setFloat("reflection", value);
-            });
-
-
-
-
-
-            scene.clearColor = new BABYLON.Color4(1,1,1,1);
-            scene.fogMode = BABYLON.Scene.FOGMODE_EXP;
-            scene.fogDensity = 0.05;
-            scene.fogStart = 100.0;
-            scene.fogEnd = 300.0;
-            scene.fogColor = new BABYLON.Color3(1, 1, 1);
-            var time = 0;
-            engine.runRenderLoop(function () {
-
-
-
-                var shaderMaterial = scene.getMaterialByName("shader");
-                shaderMaterial.setFloat("time", time);
-                time += 0.02;
-
-
-
-                dampenedMouse.x += (mouse.x - dampenedMouse.x)*0.05;
-                dampenedMouse.y += (mouse.y  - dampenedMouse.y)*0.05;
-                shaderMaterial.setVector2("mouse", dampenedMouse);
-
-                dampenedPickpoint.x += (pickPoint.x - dampenedPickpoint.x)*0.3;
-                dampenedPickpoint.y += (pickPoint.y - dampenedPickpoint.y)*0.3;
-                dampenedPickpoint.z += (pickPoint.z - dampenedPickpoint.z)*0.3;
-                shaderMaterial.setVector3("pickPoint", dampenedPickpoint);
-
-                shaderMaterial.setVector3("cameraPosition", scene.activeCamera.position);
-
-                //scene.getLightByName("Omni0").position = new BABYLON.Vector3(6,(1-mouse.y/window.innerHeight)*2+2,mouse.x/window.innerWidth*4-2);
-
-                scene.render();
-            });
-
-            window.addEventListener("resize", function () {
-                engine.resize();
-            });
-
-
-
-            window.addEventListener("mousemove", function (e) {
-              var shaderMaterial = scene.getMaterialByName("shader");
-              var timeout;
-              var oldmouse = mouse.clone();
-
-              mouse.x = scene.pointerX;
-              mouse.y = scene.pointerY;
-
-
-              var mousevec = mouse.clone();
-              mousevec.x = mousevec.x / window.innerWidth * 2 - 1;
-              mousevec.y = mousevec.y / window.innerHeight * 2 - 1;
-              oldmouse.x = oldmouse.x / window.innerWidth * 2 - 1;
-              oldmouse.y = oldmouse.y / window.innerHeight * 2 - 1;
-
-
-
-
-               var pickResult = scene.pick(scene.pointerX, scene.pointerY);
-               if (pickResult.hit) {
-
-                    pickPoint = pickResult.pickedPoint;
-
-
-                    clearInterval(timeout);
-                    timeout = window.setInterval(function(){
-                      gravityScale += .01;
-                      if (gravityScale >= 1) {
-                        gravityScale = 1;
-                        shaderMaterial.setFloat("gravityScale", gravityScale);
-                        clearInterval(timeout);
-                      }
-                      else {
-                        shaderMaterial.setFloat("gravityScale", gravityScale);
-                      }
-                    }, 50);
-                }
-                else {
-                  clearInterval(timeout);
-                  timeout = window.setInterval(function(){
-                    gravityScale -= .01;
-                    if (gravityScale <= 0) {
-                      gravityScale = 0;
-                      shaderMaterial.setFloat("gravityScale", gravityScale);
-                      clearInterval(timeout);
-                    }
-                    else {
-                      shaderMaterial.setFloat("gravityScale", gravityScale);
-                    }}, 50);
-                }
-
-            });
-        }
-    </script>
+    <div id="container"></div>
+    <script src="js/main.js"></script>
 </body>
 </html>
