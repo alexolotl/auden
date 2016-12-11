@@ -43,8 +43,12 @@
           uniform float scale2;
           uniform float scale3;
           uniform float scale4;
+          uniform float scale5;
+          uniform float scale6;
+          uniform float scale7;
           uniform float u_bump;
           uniform float size;
+          uniform sampler2D textureSampler2;
 
           // Varying
           varying vec3 vPosition;
@@ -92,17 +96,15 @@
               float t = time/3.;
 
               for (int i=0; i<3; i++){
-                  p += cos( p.yzx*3. + vec3(t,1.,1.57))/3.;
-                  p += sin( p.yzx + t + vec3(1.57,t,1.))/2.;
+                  p += cos( p.yzx*3.*scale6 + vec3(t,1.,1.57))/3.;
+                  p += sin( p.yzx*scale7 + t + vec3(1.57,t,1.))/2.;
                   p *= 1.3;
               }
 
               vec3 f = mod(p,2.)/2.;
               vec3 u = f * f * (3.0 - 2.0 * f );
 
-
-
-              return mix(2.*u-1., mod(p,2.)-1., 0.7);
+              return mix(2.*u-1., mod(p,2.)-1., 0.7+scale4);
 
           }
 
@@ -126,6 +128,7 @@
                 newValue.y = sin(newu)*sin(newv);
                 newValue.z = cos(newu);
                 newValue*=size/2.;
+                newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), M_PI/2.)*vec4(newValue,1.0) ).xyz;
                 return newValue;
               }
 
@@ -140,10 +143,7 @@
 
                 float displaceX = scale2*1./10.*warp(newValue);
 
-                vec3 displaced = vec3(displaceX);
                 newValue += normVal * displaceX;
-
-                vColor = vec3(displaceX);
 
                 return newValue;
           }
@@ -154,10 +154,10 @@
               // ROTATIONS
               //newValue.x -= .1*screen.x + .4*sin((screenActual.x-screen.x)/2.)*length(screen);
               //newValue.y += .1*screen.y + .4*sin((screenActual.y-screen.y)/2.)*length(screen);
-              newValue.x -= 0.2*(screenActual.x-screen.x);
-              newValue.y += .2*(screenActual.y-screen.y);
-              newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), screen.y/3.)*vec4(newValue,1.0) ).xyz;
-              newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/3.)*vec4(newValue,1.0) ).xyz;
+              newValue.x -= 0.05*(screenActual.x-screen.x);
+              newValue.y += .05*(screenActual.y-screen.y);
+              newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), screen.y/8.)*vec4(newValue,1.0) ).xyz;
+              newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/2.)*vec4(newValue,1.0) ).xyz;
 
               return newValue;
           }
@@ -178,45 +178,55 @@
               vec3 norm1 = normalize(newPosition);
               //newPosition = rotate(newPosition);
               newPosition = deform(newPosition);
+
               vec3 origNP = newPosition;
-              newPosition = rotate(newPosition);
+              //newPosition = rotate(newPosition);
               //newPosition = rotate(newPosition);
               //newPosition = lift(newPosition, norm1, mousePullWidth, mousePull);
 
               float smallvalue = 0.01;
               vec3 neighbor1 = parametric(vUV.x+smallvalue, vUV.y);
               vec3 norm2 = normalize(neighbor1);
-              //neighbor1 = rotate(neighbor1);
               neighbor1 = deform(neighbor1);
-              neighbor1 = rotate(neighbor1);
-              //neighbor1 = lift(neighbor1, norm2, mousePullWidth, mousePull);
+              // neighbor1 = rotate(neighbor1);
 
               vec3 neighbor2 = parametric(vUV.x, vUV.y+smallvalue);
               vec3 norm3 = normalize(neighbor2);
-              //neighbor2 = rotate(neighbor2);
               neighbor2 = deform(neighbor2);
-              neighbor2 = rotate(neighbor2);
-              //neighbor2 = lift(neighbor2, norm3, mousePullWidth, mousePull);
+              // neighbor2 = rotate(neighbor2);
 
               vec3 tangent = neighbor1 - newPosition;
               vec3 bitangent = neighbor2 - newPosition;
               vec3 parametricNormal = normalize(cross(tangent, bitangent));
 
-              float delta = 0.1*scale1;
-              vec3 rotated = origNP;//rotate(newPosition);
-              float displace = warp(rotated);
-              float gradX = ( warp(rotated + vec3(delta,0.,0.) ) - displace ) / delta;
-              float gradY = ( warp(rotated + vec3(0.,delta,0.) ) - displace ) / delta;
-              float gradZ = ( warp(rotated + vec3(0.,0.,delta) ) - displace ) / delta;
+              vec3 normalDiff = parametricNormal - norm1;
+              float angle = acos( dot(parametricNormal, norm1) / (length(parametricNormal)*length(norm1)) );
 
-              vNormal = normalize(parametricNormal - rotate(vec3(gradX,gradY,gradZ))*u_bump);
-              vNormal += scale3*W(vNormal*scale4);
+              vNormal = rotateValue( parametricNormal, tangent,  scale1*angle);
+              vNormal = rotate(vNormal);
+              vNormal += scale5*.1*(texture2D(textureSampler2,fract(uv*vec2(40.,4.)))).xyz;
+              //vNormal += .3*(texture2D(textureSampler2,fract(uv*5.))).xyz;
+              parametricNormal += normalDiff*scale5;
 
-              vPosition = newPosition;
+              //
+              // float delta = 0.1*scale1;
+              // vec3 rotated = origNP;//rotate(newPosition);
+              // float displace = warp(rotated);
+              // float gradX = ( warp(rotated + vec3(delta,0.,0.) ) - displace ) / delta;
+              // float gradY = ( warp(rotated + vec3(0.,delta,0.) ) - displace ) / delta;
+              // float gradZ = ( warp(rotated + vec3(0.,0.,delta) ) - displace ) / delta;
+
+              //vNormal = normalize(parametricNormal - rotate(vec3(gradX,gradY,gradZ))*u_bump);
+              //vNormal += scale3*W(vNormal*scale4);
+
+              //vNormal = parametricNormal;
+
+              newPosition = rotate(newPosition);
+
 
               vReflection = reflect(-normalize(modelMatrix*vec4(newPosition,1.0) - vec4(cameraPosition,1.0)), vec4(vNormal,0.0));
-
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+              vPosition = newPosition;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(rotate(newPosition), 1.0);
           }
     </script>
     <script id="fragment" type="x-shader/x-fragment">
@@ -234,9 +244,11 @@
 
           // Uniforms
           uniform float time;
+          uniform vec2 resolution;
           uniform float specularLight;
           uniform float reflection;
           uniform sampler2D textureSampler;
+          uniform sampler2D textureSampler2;
           uniform vec3 pickPoint;
           uniform mat4 modelMatrix;
 
@@ -244,9 +256,34 @@
               return mat2(cos(_angle),-sin(_angle),sin(_angle),cos(_angle));
           }
 
+
+          float SelectMip (float Roughness)
+          {
+              return 8.5+resolution.y/512.0 -1.0-(3.0-1.15*log2(Roughness));
+          }
+
+          vec4 BlurTexture (vec2 Coord, sampler2D Tex, float MipBias)
+          {
+          	vec2 TexelSize = MipBias/resolution;
+
+              vec4  Color = texture2D(Tex, Coord);
+              Color += texture2D(Tex, Coord + vec2(TexelSize.x,-1.0),  MipBias);
+              Color += texture2D(Tex, Coord + vec2(-TexelSize.x,-1.0),  MipBias);
+              Color += texture2D(Tex, Coord + vec2(0.0,TexelSize.y),  MipBias);
+              Color += texture2D(Tex, Coord + vec2(0.0,-TexelSize.y),  MipBias);
+              Color += texture2D(Tex, Coord + vec2(TexelSize.x,TexelSize.y),  MipBias);
+              Color += texture2D(Tex, Coord + vec2(-TexelSize.x,TexelSize.y),  MipBias);
+              Color += texture2D(Tex, Coord + vec2(TexelSize.x,-TexelSize.y),  MipBias);
+              Color += texture2D(Tex, Coord + vec2(-TexelSize.x,-TexelSize.y),  MipBias);
+
+              return Color/9.0;
+          }
+
+
+
           void main(void) {
             vec2 newUv = vUV;
-              vec3 vLightPosition = vec3(15,30,30);
+              vec3 vLightPosition = vec3(15.,30.,30.);
               //vLightPosition = vec3(8.0,2.0*pickPoint.yz);
 
               // World values
@@ -254,18 +291,37 @@
               vec3 vNormalW = normalize(vec3(modelMatrix * vec4(vNormal, 0.0)));
               vec3 viewDirectionW = normalize(cameraPosition - vPositionW);
 
+
+
+
+              // vec2 uvr = (vReflection.xz);
+              // float Roughness = 0.5;
+              // Roughness = mix(Roughness*1.5, Roughness*0.67, texture2D(textureSampler2, vUV/2.).y);
+              // vec3 Environment = (1.0+fresnel) * clamp(1.0*BlurTexture(uvr,textureSampler,SelectMip(Roughness)).xyz +
+              // 3.0*clamp(texture2D(textureSampler,uvr,SelectMip(Roughness)+1.0).yyy-0.67,0.0,1.0),0.0,1.0);
+              //
+              //
+              // float sh = 0.75+0.25*clamp(dot(vNormalW,vLightPosition),0.0,1.0);
+              //  vec3 sp = vec3(1.0-Roughness)*pow(clamp(dot(vNormalW,normalize((vLightPosition-cameraPosition)*0.5)),0.0,1.0),1.0/(pow(Roughness+0.1,4.0)));
+              //  vec3 fcol01 = mix(sh*vec3(0.3,.3,.3)*Environment,mix(normalize(vec3(0.53,.53,.53))*2.5,vec3(1.5),0.4),sp);
+              //
+              //  gl_FragColor = vec4(fcol01,1.0);
+
+
+
+
+
               // Light
               vec3 lightVectorW = normalize(vLightPosition - vPositionW);
               vec3 color = vec3(1.);//texture2D(textureSampler, vUV).rgb;
               color = vec3(vColor);
-              color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.5,1.)).rgb;
+              color = texture2D(textureSampler, vReflection.xz/5.+0.5).rgb;
               color *= (color+.2);
               color = mix(vec3(1.),color,reflection);
               //color = texture2D(textureSampler, vUV).rgb;
 
-              float fresnel = 1.-dot(viewDirectionW, vNormalW);
+              float fresnel = 1.-pow(dot(viewDirectionW, vNormalW), 1.0);
               //color += vec3(0.,0.,1.)*fresnel;
-
 
               // emissive
               float emissive = 1.;
