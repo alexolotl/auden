@@ -18,10 +18,10 @@
         }
     </style>
 
-    <script src="js/three.min.js"></script>
-    <script src="js/OrbitControls.js"></script>
-		<script src="js/Detector.js"></script>
-		<script src="js/libs/stats.min.js"></script>
+    <script type="text/javascript" src="js/three.min.js"></script>
+    <script type="text/javascript" src="js/OrbitControls.js"></script>
+		<script type="text/javascript" src="js/Detector.js"></script>
+		<script type="text/javascript" src="js/libs/stats.min.js"></script>
     <script type="text/javascript" src="dat.gui.min.js"></script>
 
     <script id="vertex" type="x-shader/x-vertex">
@@ -93,18 +93,18 @@
 
               p = (p+3.)*4.;
 
-              float t = time/3.;
+              float t = time/3.*scale4;
 
               for (int i=0; i<3; i++){
-                  p += cos( p.yzx*3.*scale6 + vec3(t,1.,1.57))/3.;
-                  p += sin( p.yzx*scale7 + t + vec3(1.57,t,1.))/2.;
+                  p += cos( p.yzx*3. + vec3(t,1.,1.57))/3.;
+                  p += sin( p.yzx + t + vec3(1.57,t,1.))/2.;
                   p *= 1.3;
               }
 
               vec3 f = mod(p,2.)/2.;
               vec3 u = f * f * (3.0 - 2.0 * f );
 
-              return mix(2.*u-1., mod(p,2.)-1., 0.7+scale4);
+              return mix(2.*u-1., mod(p,2.)-1., 0.7*scale5);
 
           }
 
@@ -128,12 +128,12 @@
                 newValue.y = sin(newu)*sin(newv);
                 newValue.z = cos(newu);
                 newValue*=size/2.;
-                newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), M_PI/2.)*vec4(newValue,1.0) ).xyz;
+                //newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), M_PI/2.)*vec4(newValue,1.0) ).xyz;
                 return newValue;
               }
 
           float warp(vec3 newValue) {
-            return length(W(newValue/7.));
+            return length(W(newValue/7.*scale2));
           }
 
           vec3 deform(vec3 newValue) {
@@ -141,7 +141,9 @@
 
                 vec3 normVal = normalize(newValue);
 
-                float displaceX = scale2*1./10.*warp(newValue);
+                float displaceX = scale3*1./15.*warp(newValue/1.5*scale1);
+
+                vColor = vec3(displaceX);
 
                 newValue += normVal * displaceX;
 
@@ -154,10 +156,10 @@
               // ROTATIONS
               //newValue.x -= .1*screen.x + .4*sin((screenActual.x-screen.x)/2.)*length(screen);
               //newValue.y += .1*screen.y + .4*sin((screenActual.y-screen.y)/2.)*length(screen);
-              newValue.x -= 0.05*(screenActual.x-screen.x);
-              newValue.y += .05*(screenActual.y-screen.y);
+                //newValue.x -= 0.05*(screenActual.x-screen.x);
+                //newValue.y += .05*(screenActual.y-screen.y);
               newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), screen.y/8.)*vec4(newValue,1.0) ).xyz;
-              newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/2.)*vec4(newValue,1.0) ).xyz;
+              newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/8.)*vec4(newValue,1.0) ).xyz;
 
               return newValue;
           }
@@ -199,14 +201,14 @@
               vec3 bitangent = neighbor2 - newPosition;
               vec3 parametricNormal = normalize(cross(tangent, bitangent));
 
-              vec3 normalDiff = parametricNormal - norm1;
-              float angle = acos( dot(parametricNormal, norm1) / (length(parametricNormal)*length(norm1)) );
-
-              vNormal = rotateValue( parametricNormal, tangent,  scale1*angle);
-              vNormal = rotate(vNormal);
-              vNormal += scale5*.1*(texture2D(textureSampler2,fract(uv*vec2(40.,4.)))).xyz;
+              // vec3 normalDiff = parametricNormal - norm1;
+              // float angle = acos( dot(parametricNormal, norm1) / (length(parametricNormal)*length(norm1)) );
+              //
+              vNormal = rotateValue( parametricNormal, tangent, scale6);
+              vNormal = rotate(parametricNormal);
+              //vNormal += scale5*.1*(texture2D(textureSampler2,fract(uv*vec2(40.,4.)))).xyz; // METALLIC RIDGES
               //vNormal += .3*(texture2D(textureSampler2,fract(uv*5.))).xyz;
-              parametricNormal += normalDiff*scale5;
+              //parametricNormal += normalDiff*scale5;
 
               //
               // float delta = 0.1*scale1;
@@ -248,7 +250,6 @@
           uniform float specularLight;
           uniform float reflection;
           uniform sampler2D textureSampler;
-          uniform sampler2D textureSampler2;
           uniform vec3 pickPoint;
           uniform mat4 modelMatrix;
 
@@ -257,68 +258,24 @@
           }
 
 
-          float SelectMip (float Roughness)
-          {
-              return 8.5+resolution.y/512.0 -1.0-(3.0-1.15*log2(Roughness));
-          }
-
-          vec4 BlurTexture (vec2 Coord, sampler2D Tex, float MipBias)
-          {
-          	vec2 TexelSize = MipBias/resolution;
-
-              vec4  Color = texture2D(Tex, Coord);
-              Color += texture2D(Tex, Coord + vec2(TexelSize.x,-1.0),  MipBias);
-              Color += texture2D(Tex, Coord + vec2(-TexelSize.x,-1.0),  MipBias);
-              Color += texture2D(Tex, Coord + vec2(0.0,TexelSize.y),  MipBias);
-              Color += texture2D(Tex, Coord + vec2(0.0,-TexelSize.y),  MipBias);
-              Color += texture2D(Tex, Coord + vec2(TexelSize.x,TexelSize.y),  MipBias);
-              Color += texture2D(Tex, Coord + vec2(-TexelSize.x,TexelSize.y),  MipBias);
-              Color += texture2D(Tex, Coord + vec2(TexelSize.x,-TexelSize.y),  MipBias);
-              Color += texture2D(Tex, Coord + vec2(-TexelSize.x,-TexelSize.y),  MipBias);
-
-              return Color/9.0;
-          }
-
 
 
           void main(void) {
             vec2 newUv = vUV;
               vec3 vLightPosition = vec3(15.,30.,30.);
-              //vLightPosition = vec3(8.0,2.0*pickPoint.yz);
+              vLightPosition = vec3(0.,5.,0.);
 
               // World values
               vec3 vPositionW = vec3(modelMatrix * vec4(vPosition, 1.0));
               vec3 vNormalW = normalize(vec3(modelMatrix * vec4(vNormal, 0.0)));
               vec3 viewDirectionW = normalize(cameraPosition - vPositionW);
 
-
-
-
-              // vec2 uvr = (vReflection.xz);
-              // float Roughness = 0.5;
-              // Roughness = mix(Roughness*1.5, Roughness*0.67, texture2D(textureSampler2, vUV/2.).y);
-              // vec3 Environment = (1.0+fresnel) * clamp(1.0*BlurTexture(uvr,textureSampler,SelectMip(Roughness)).xyz +
-              // 3.0*clamp(texture2D(textureSampler,uvr,SelectMip(Roughness)+1.0).yyy-0.67,0.0,1.0),0.0,1.0);
-              //
-              //
-              // float sh = 0.75+0.25*clamp(dot(vNormalW,vLightPosition),0.0,1.0);
-              //  vec3 sp = vec3(1.0-Roughness)*pow(clamp(dot(vNormalW,normalize((vLightPosition-cameraPosition)*0.5)),0.0,1.0),1.0/(pow(Roughness+0.1,4.0)));
-              //  vec3 fcol01 = mix(sh*vec3(0.3,.3,.3)*Environment,mix(normalize(vec3(0.53,.53,.53))*2.5,vec3(1.5),0.4),sp);
-              //
-              //  gl_FragColor = vec4(fcol01,1.0);
-
-
-
-
-
               // Light
               vec3 lightVectorW = normalize(vLightPosition - vPositionW);
-              vec3 color = vec3(1.);//texture2D(textureSampler, vUV).rgb;
-              color = vec3(vColor);
-              color = texture2D(textureSampler, vReflection.xz/5.+0.5).rgb;
+              vec3 color = vColor;
+              color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.5,1.)).rgb;
               color *= (color+.2);
-              color = mix(vec3(1.),color,reflection);
-              //color = texture2D(textureSampler, vUV).rgb;
+              color = mix(vec3(1.), color, reflection);
 
               float fresnel = 1.-pow(dot(viewDirectionW, vNormalW), 1.0);
               //color += vec3(0.,0.,1.)*fresnel;
@@ -327,7 +284,7 @@
               float emissive = 1.;
 
               // diffuse
-              float ndl = max(0., dot(vNormalW, lightVectorW));
+              float ndl = max(0., dot(vNormalW, normalize(vec3(0.,5.,0.))));
 
               //ndl += .5*max(0., dot(vNormalW, normalize(vec3(0.,1.,0.))));
               //ndl += .5*max(0., dot(vNormalW, normalize(vec3(.2,0.,-1.))));
@@ -338,7 +295,7 @@
               float specComp = max(0., dot(vNormalW, angleW));
               specComp = pow(specComp, 512.) * 0.05;
 
-              gl_FragColor = vec4(mix(emissive*color, ndl*color*.9 + specComp*5.*specularLight, 0.66),1.);//emissive*color + color*ndl*.3 + vec3(specComp)*.3 + .65*(1.15-color)*dot(normalize(vPositionW-vLightPosition),vNormal), 1.);
+              gl_FragColor = vec4(mix(emissive*color, ndl*color*1. + specComp*5.*specularLight, 0.66),1.);
           }
     </script>
 </head>

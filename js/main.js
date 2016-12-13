@@ -12,7 +12,7 @@ var ground, width, height;
 
 var dampenedMouse, mouse, pickPoint, dampenedPickpoint, time;
 
-var shaderMaterial;
+var shaderMaterial, texture, texture2;
 
 init();
 animate();
@@ -30,17 +30,17 @@ function init() {
 	container = document.getElementById( 'container' );
 
   camera = new THREE.PerspectiveCamera( 45, width / height, 1, 1000 );
-  camera.position.z = 12;
+  camera.position.z = 12.5;//13.75;
 
 	scene = new THREE.Scene();
   //scene.fog = new THREE.Fog( 0xffffff, 0.015, 20 );
 
 	//var geometry = new THREE.PlaneBufferGeometry( 2, 2 );
 
-	var texture = THREE.ImageUtils.loadTexture('amiga4.jpg');
+	texture = THREE.ImageUtils.loadTexture('amiga4.jpg');
 	texture.minFilter = THREE.NearestFilter;
 
-	var texture2 = THREE.ImageUtils.loadTexture('brushedMetal.jpg');
+	texture2 = THREE.ImageUtils.loadTexture('brushedMetal.jpg');
 	texture2.minFilter = THREE.NearestFilter;
 
 	uniforms = {
@@ -48,22 +48,22 @@ function init() {
 			resolution: { type: "v2", value: new THREE.Vector2(width,height) },
 			mouse: {type: "v2", value: new THREE.Vector2(mouse.x,mouse.y) },
 			dampenedMouse: {type: "v2", value: new THREE.Vector2(mouse.x,mouse.y) },
-			scale1: {type: "f", value: .68},
-			scale2: {type: "f", value: .85},
-			scale3: {type: "f", value: 0.},
-			scale4: {type: "f", value: 0},
+			scale1: {type: "f", value: 1},
+			scale2: {type: "f", value: 1},
+			scale3: {type: "f", value: 1.},
+			scale4: {type: "f", value: 1},
 			scale5: {type: "f", value: 1},
-			scale6: {type: "f", value: 1},
+			scale6: {type: "f", value: 0},
 			scale7: {type: "f", value: 1},
 			time1: {type: "f", value: 1.0},
 			mousePullWidth: {type: "f", value: 3.0},
 			mousePull: {type: "f", value: .3},
 			displace: {type: "f", value: 1.0},
-			reflection: {type: "f", value: 1},
+			reflection: {type: "f", value: 0},
 			textureSampler: {type: "t", value: texture},
 			textureSampler2: {type: "t", value: texture2},
 			pickPoint: {type: "v3", value: new THREE.Vector3() },
-			size: {type: "f", value: 5},
+			size: {type: "f", value: 4.5},
 			specularLight: {type: "f", value: .3},
 			u_bump: {type: "f", value: 0.22}
 	}
@@ -113,6 +113,7 @@ function init() {
 
           var geo = new THREE.PlaneGeometry(32,32,512,512);
 					var morphingSphere = new THREE.Mesh( geo, shaderMaterial );
+					// morphingSphere.rotation.y = Math.PI/2;
 					// morphingSphere.customDepthMaterial = new THREE.ShaderMaterial({
           //     vertexShader: document.getElementById('vertex').textContent,
           //     fragmentShader: THREE.ShaderLib.depthRGBA.fragmentShader,
@@ -141,6 +142,7 @@ function init() {
 
 					renderer = new THREE.WebGLRenderer({antialias: true});
 					renderer.setPixelRatio( window.devicePixelRatio );
+					renderer.setSize( window.innerWidth, window.innerHeight );
           //renderer.shadowMapEnabled = true;
           //renderer.shadowMapSoft = true;
           renderer.setClearColor(0xffffff);
@@ -159,25 +161,24 @@ function init() {
 
 					window.addEventListener( 'resize', onWindowResize, false );
 					window.addEventListener( 'mousemove', onMouseMove, false );
-					window.addEventListener( 'mousedown', onMouseDown, false );
-					window.addEventListener( 'mouseup', onMouseUp, false );
+					//window.addEventListener( 'mousedown', onMouseDown, false );
+					//window.addEventListener( 'mouseup', onMouseUp, false );
 
 					var gui = new dat.GUI();
-					gui.add(shaderMaterial.uniforms.mousePull, 'value', 0, 1).name('mousepull height').step(0.05);
-					gui.add(shaderMaterial.uniforms.mousePullWidth, 'value', .25, 5).name('mousepull width').step(0.05);
 					gui.add(shaderMaterial.uniforms.specularLight, 'value', 0, 1.5).name('specular light').step(0.05);
 					gui.add(shaderMaterial.uniforms.reflection, 'value', 0, 2).name('reflection').step(0.05);
-					gui.add(shaderMaterial.uniforms.scale1, 'value', 0.1, 1.5).name('bump').step(0.02);
-					gui.add(shaderMaterial.uniforms.scale4, 'value', 0, 1).name('scale4').step(.02);
-					gui.add(shaderMaterial.uniforms.scale5, 'value', 0, 2).name('metallic ridges').step(.02);
-					gui.add(shaderMaterial.uniforms.scale6, 'value', 0.3, 1.5).name('scale6').step(.02);
-					gui.add(shaderMaterial.uniforms.scale7, 'value', 0, 2.5).name('scale7').step(.02);
+					gui.add(shaderMaterial.uniforms.scale1, 'value', 0.0, 2).name('scale1: detail A').step(0.02);
+					gui.add(shaderMaterial.uniforms.scale2, 'value', 0, 3).name('scale2: detail B').step(.02);
+					gui.add(shaderMaterial.uniforms.scale3, 'value', 0, 4).name('scale3: displace').step(.02);
+					gui.add(shaderMaterial.uniforms.scale4, 'value', 0, 4).name('scale4: time').step(.02);
+					gui.add(shaderMaterial.uniforms.scale5, 'value', 0, 2).name('scale5: ridges').step(.02);
+					gui.add(shaderMaterial.uniforms.scale5, 'value', 0, 5).name('scale6: bump').step(.02);
 }
 
 function onWindowResize( event ) {
 	width = window.innerWidth;
 	height = window.innerHeight;
-	console.log('resize');
+
 	renderer.setSize( width, height );
 	uniforms.resolution.value.x = width;
 	uniforms.resolution.value.y = height;
@@ -186,6 +187,7 @@ function onWindowResize( event ) {
     camera.updateProjectionMatrix();
 
     renderer.setSize( window.innerWidth, window.innerHeight );
+
 }
 
 function onMouseMove( event ) {
