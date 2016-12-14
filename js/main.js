@@ -199,6 +199,7 @@ function init() {
 					// gui.add(shaderMaterial.uniforms.scale4, 'value', 0, 4).name('scale4: time').step(.02);
 					// gui.add(shaderMaterial.uniforms.scale5, 'value', 0, 2).name('scale5: ridges').step(.02);
 					// gui.add(shaderMaterial.uniforms.scale5, 'value', 0, 5).name('scale6: bump').step(.02);
+					gui.add(shaderMaterial.uniforms.reflection, 'value', 0, 1.5).name('reflection').step(.02);
 }
 
 function onWindowResize( event ) {

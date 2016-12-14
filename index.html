@@ -379,8 +379,16 @@
 
               vUV.x = uv.x * M_PI;
               vUV.y = uv.y * M_PI*2.0;
+              vUV.x *= .9999;
+              vUV.x += 0.00005;
               vec3 newPosition = parametric(vUV.x, vUV.y, mousePullWidth, mousePullHeight);
               float smallvalue = 0.01;
+              if(uv.x >= 0.98) {
+                smallvalue = -0.01;
+              }
+              if(uv.y >= 0.98) {
+                smallvalue = -0.01;
+              }
               vec3 neighbor1 = parametric(vUV.x+smallvalue, vUV.y, mousePullWidth, mousePullHeight);
               vec3 neighbor2 = parametric(vUV.x, vUV.y+smallvalue, mousePullWidth, mousePullHeight);
               vec3 tangent = neighbor1 - newPosition;
@@ -508,12 +516,15 @@
               vec3 lightVectorW = normalize(vLightPosition - vPositionW);
               vec3 color = texture2D(textureSampler, vUV).rgb;
               color = vec3(1.0,1.0,1.0);
+              //color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.5,1.)).rgb;
               color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.5,1.)).rgb;
-              color *= (color+.2);
-              color = mix(vec3(1.),color,reflection);
+              //color *= (color+.2);
+              color *= (color+.32);
+              float fresnel = 1.-dot(viewDirectionW, vNormalW);
+              color = mix(vec3(1.),color,reflection*(1.-fresnel));
               //color = texture2D(textureSampler, vUV).rgb;
 
-              float fresnel = 1.-dot(viewDirectionW, vNormalW);
+
               //color += vec3(0.,0.,1.)*fresnel;
 
 
