@@ -16,6 +16,9 @@
             overflow: hidden;
             font-family: arial;
         }
+        .dg.main.a {
+          width: 450px !important;
+        }
     </style>
 
     <script type="text/javascript" src="js/three.min.js"></script>
@@ -250,7 +253,7 @@
 
               p = (p+3.)*4.;
 
-              float t = time/3.;
+              float t = time/3.*time1;
 
               for (int i=0; i<3; i++){
                   p += cos( p.yzx*3. + vec3(t,1.,1.57))/3.;
@@ -259,7 +262,7 @@
               }
               vec3 f = mod(p,2.)/2.;
               vec3 u = f * f * (3.0 - 2.0 * f );
-              return mix(2.*u-1., mod(p,2.)-1., 0.7);
+              return mix(2.*u-1., mod(p,2.)-1., detail);
 
           }
 
@@ -286,17 +289,20 @@
                 newValue*=size/2.;
                 vec3 normVal = normalize(newValue);
 
+                newValue += scale1*(.25*vec3(sin(time2*time/2.),sin(time2*time/3.),sin(time2*time/2.5))+0.15*vec3(sin(time/6.),sin(time/5.),sin(time/4.)));
+
                 vec2 screen = mouse/resolution * 2.0 - 1.0;
 
-                float displaceX = 1./20.*length(W(newValue/7.));
+                float displaceX = scale9/10.*length(W(scale8*newValue/14.));
                 vec3 displaced = vec3(displaceX);
-                newValue += normVal * displaceX;
+                //displaced += 0.05*sin(time/2. + newValue.y*1.5);
+                newValue += normVal * displaced;
 
                 vColor = vec3(displaceX);
 
                 // ROTATIONS
-                newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), screen.y/2.)*vec4(newValue,1.0) ).xyz;
-                newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/2.)*vec4(newValue,1.0) ).xyz;
+                newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), screen.y/1.5*scale2)*vec4(newValue,1.0) ).xyz;
+                newValue = ( rotationMatrix(vec3(0.0,1.0,0.0), screen.x/1.5*scale2)*vec4(newValue,1.0) ).xyz;
 
                 //newValue += normVal*(mousePullHeight+displaced)*interpolate(max(0., (mousePullWidth-distance(pickPoint,newValue))/mousePullWidth));
 
@@ -379,16 +385,8 @@
 
               vUV.x = uv.x * M_PI;
               vUV.y = uv.y * M_PI*2.0;
-              vUV.x *= .9999;
-              vUV.x += 0.00005;
               vec3 newPosition = parametric(vUV.x, vUV.y, mousePullWidth, mousePullHeight);
               float smallvalue = 0.01;
-              if(uv.x >= 0.98) {
-                smallvalue = -0.01;
-              }
-              if(uv.y >= 0.98) {
-                smallvalue = -0.01;
-              }
               vec3 neighbor1 = parametric(vUV.x+smallvalue, vUV.y, mousePullWidth, mousePullHeight);
               vec3 neighbor2 = parametric(vUV.x, vUV.y+smallvalue, mousePullWidth, mousePullHeight);
               vec3 tangent = neighbor1 - newPosition;
@@ -517,9 +515,9 @@
               vec3 color = texture2D(textureSampler, vUV).rgb;
               color = vec3(1.0,1.0,1.0);
               //color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.5,1.)).rgb;
-              color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.5,1.)).rgb;
+              color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.35,1.)).rgb;
               //color *= (color+.2);
-              color *= (color+.32);
+              color *= (color+.12);
               float fresnel = 1.-dot(viewDirectionW, vNormalW);
               color = mix(vec3(1.),color,reflection*(1.-fresnel));
               //color = texture2D(textureSampler, vUV).rgb;
@@ -532,7 +530,9 @@
               float emissive = 1.;
 
               // diffuse
-              float ndl = max(0., dot(vNormalW, normalize(vec3(0.,5.,0.))));
+              float ndl = max(0., dot(normalize(vNormalW), normalize(vec3(3.,5.,6.))));
+              //ndl *= 1. / (.7+ndl/2.);
+
               //ndl += max(0., dot(vNormalW, normalize(vec3(-3.,-5.,2.))));
 
               //ndl += .5*max(0., dot(vNormalW, normalize(vec3(0.,1.,0.))));

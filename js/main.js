@@ -75,25 +75,25 @@ function init() {
 			pickPoint: {type: "v3", value: new THREE.Vector3()},
 			resolution: {type: "v2", value: new THREE.Vector2(width, height)},
 			gravityScale: {type: "f", value: 0},
-			time1: {type: "f", value: 1.2},
-			time2: {type: "f", value: .2},
+			time1: {type: "f", value: 1},
+			time2: {type: "f", value: 1.5},
 			time3: {type: "f", value: .2},
 			time4: {type: "f", value: .2},
 			displace: {type: "f", value: .19},
-			scale1: {type: "f", value: 1},
+			scale1: {type: "f", value: .75},
 			scale2: {type: "f", value: 1},
 			scale3: {type: "f", value: 1},
 			scale4: {type: "f", value: 0},
 			scale5: {type: "f", value: 0},
 			scale6: {type: "f", value: .5},
 			scale7: {type: "f", value: 0},
-			scale8: {type: "f", value: 2.5},
-			scale9: {type: "f", value: 1},
-			size: {type: "f", value: 4.5},
+			scale8: {type: "f", value: 2},
+			scale9: {type: "f", value: 0.7},
+			size: {type: "f", value: 5},
 			reflection: {type: "f", value: 0},
 			specularLight: {type: "f", value: 0},
 			detail: {type: "f", value: .5},
-			octaves: {type: "f", value: 2},
+			octaves: {type: "f", value: 2}
 	}
 
 	var shaderMaterial = new THREE.ShaderMaterial( {
@@ -137,7 +137,7 @@ function init() {
           //var spotLightHelper = new THREE.SpotLightHelper( light );
           //scene.add( spotLightHelper );
 
-          var geo = new THREE.PlaneGeometry(32,32,280,280);
+          var geo = new THREE.PlaneGeometry(32,32,380,380);
 					var morphingSphere = new THREE.Mesh( geo, shaderMaterial );
 					// morphingSphere.rotation.y = Math.PI/2;
 					// morphingSphere.customDepthMaterial = new THREE.ShaderMaterial({
@@ -148,10 +148,10 @@ function init() {
 					scene.add( morphingSphere );
 
 
-					var sphereGeo = new THREE.SphereGeometry(2, 32, 32);
-					var invisibleSphere = new THREE.Mesh( sphereGeo, new THREE.MeshBasicMaterial() );
-					invisibleSphere.transparent = true;
-					scene.add( invisibleSphere );
+					// var sphereGeo = new THREE.SphereGeometry(2, 32, 32);
+					// var invisibleSphere = new THREE.Mesh( sphereGeo, new THREE.MeshBasicMaterial() );
+					// invisibleSphere.transparent = true;
+					// scene.add( invisibleSphere );
 
 /*
           var icoGeo = new THREE.IcosahedronGeometry(2,6);
@@ -200,6 +200,14 @@ function init() {
 					// gui.add(shaderMaterial.uniforms.scale5, 'value', 0, 2).name('scale5: ridges').step(.02);
 					// gui.add(shaderMaterial.uniforms.scale5, 'value', 0, 5).name('scale6: bump').step(.02);
 					gui.add(shaderMaterial.uniforms.reflection, 'value', 0, 1.5).name('reflection').step(.02);
+					gui.add(shaderMaterial.uniforms.time1, 'value', 0, 3).name('time1').step(.02);
+					gui.add(shaderMaterial.uniforms.time2, 'value', 0, 3).name('time of random movement').step(.02);
+					gui.add(shaderMaterial.uniforms.scale9, 'value', 0, 5).name('B_displace').step(.02);
+					gui.add(shaderMaterial.uniforms.scale8, 'value', 0, 5).name('B_scale').step(.02);
+					gui.add(shaderMaterial.uniforms.detail, 'value', 0, 1).name('B_sharpness').step(.02);
+					gui.add(shaderMaterial.uniforms.size, 'value', 4, 6).name('size').step(.02);
+					gui.add(shaderMaterial.uniforms.scale1, 'value', 0, 1).name('random distance from center').step(.02);
+					gui.add(shaderMaterial.uniforms.scale2, 'value', 0, 3).name('mouseover roll amount').step(.02);
 }
 
 function onWindowResize( event ) {
@@ -287,8 +295,8 @@ function render() {
 	uniforms.time.value = time;
 	time += 0.02;
 
-	dampenedMouse.x += (mouse.x - dampenedMouse.x)*0.04;
-	dampenedMouse.y += (mouse.y  - dampenedMouse.y)*0.04;
+	dampenedMouse.x += (mouse.x - dampenedMouse.x)*0.02;
+	dampenedMouse.y += (mouse.y  - dampenedMouse.y)*0.02;
 	uniforms.mouse.value.copy(mouse);
 	// uniforms.dampenedMouse.value.copy(dampenedMouse);
 	uniforms.mouse.value.copy(dampenedMouse);
