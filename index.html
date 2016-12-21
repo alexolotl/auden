@@ -26,6 +26,18 @@
 		<script type="text/javascript" src="js/Detector.js"></script>
 		<script type="text/javascript" src="js/libs/stats.min.js"></script>
     <script type="text/javascript" src="dat.gui.min.js"></script>
+    <script type="text/javascript" src="js/postprocessing/EffectComposer.js"></script>
+    <script type="text/javascript" src="js/postprocessing/CopyShader.js"></script>
+    <script type="text/javascript" src="js/postprocessing/EffectComposer.js"></script>
+    <script type="text/javascript" src="js/postprocessing/CopyShader.js"></script>
+    <script type="text/javascript" src="js/postprocessing/ShaderPass.js"></script>
+    <script type="text/javascript" src="js/postprocessing/RenderPass.js"></script>
+    <script type="text/javascript" src="js/postprocessing/BloomPass.js"></script>
+    <script type="text/javascript" src="js/postprocessing/ConvolutionShader.js"></script>
+    <script type="text/javascript" src="js/postprocessing/BokehPass.js"></script>
+    <script type="text/javascript" src="js/postprocessing/BokehShader.js"></script>
+    <!-- <script type="text/javascript" src="js/postprocessing/FilmPass.js"></script>
+    <script type="text/javascript" src="js/postprocessing/FilmShader.js"></script> -->
 
     <script id="vertex" type="x-shader/x-vertex">
           // precision highp float;
@@ -289,7 +301,7 @@
                 newValue*=size/2.;
                 vec3 normVal = normalize(newValue);
 
-                newValue += scale1*(.25*vec3(sin(time2*time/2.),sin(time2*time/3.),sin(time2*time/2.5))+0.15*vec3(sin(time/6.),sin(time/5.),sin(time/4.)));
+                newValue += scale1*(.25*vec3(sin(time2*time/2.),sin(time2*time/3.),2.*sin(time2*time/2.5))+0.15*vec3(sin(time/6.),sin(time/5.),2.*sin(time/4.)));
 
                 vec2 screen = mouse/resolution * 2.0 - 1.0;
 
@@ -519,7 +531,8 @@
               //color *= (color+.2);
               color *= (color+.12);
               float fresnel = 1.-dot(viewDirectionW, vNormalW);
-              color = mix(vec3(1.),color,reflection*(1.-fresnel));
+              color = mix(vec3(1.),color,reflection);
+              //color = mix(vec3(1.,1.,1.),color,(1.-fresnel));
               //color = texture2D(textureSampler, vUV).rgb;
 
 
@@ -531,6 +544,7 @@
 
               // diffuse
               float ndl = max(0., dot(normalize(vNormalW), normalize(vec3(3.,5.,6.))));
+              //ndl += .7*fresnel;
               //ndl *= 1. / (.7+ndl/2.);
 
               //ndl += max(0., dot(vNormalW, normalize(vec3(-3.,-5.,2.))));
@@ -544,7 +558,7 @@
               float specComp = max(0., dot(vNormalW, angleW));
               specComp = pow(specComp, 512.) * 0.05;
 
-              gl_FragColor = vec4(mix(emissive*color, ndl*color*1. + specComp*5.*specularLight, 0.66),1.);
+              gl_FragColor = vec4(mix(emissive*color, ndl*color*vec3(1.,0.98,1.)*1. + specComp*5.*specularLight, 0.66),1.);
           }
     </script>
 </head>

@@ -14,6 +14,10 @@ var dampenedMouse, mouse, pickPoint, dampenedPickpoint, time;
 
 var shaderMaterial, texture, texture2;
 
+var particleSystem, particleContainer, particleCount;
+
+var composer, clock;
+
 init();
 animate();
 
@@ -26,6 +30,8 @@ function init() {
 	time = 0;
   width = window.innerWidth;
   height = window.innerHeight;
+
+	clock = new THREE.Clock();
 
 	container = document.getElementById( 'container' );
 
@@ -133,11 +139,30 @@ function init() {
 					*/
 
           //scene.add( light );
+					var spotlight = new THREE.SpotLight(0xeeeeff);
+					spotlight.position.set(0,0,200);
+					spotlight.decay = 2;
+					spotlight.intensity = 1.2;
+					spotlight.target.z = -200;
+					spotlight.target.x = 0;
+					spotlight.target.y = 0;
+					spotlight.penumbra = 1;
+					scene.add(spotlight);
+					//
+					// var spotlight2 = new THREE.SpotLight(0xeeefff);
+					// spotlight2.position.set(0,-300,0);
+					// spotlight2.decay = 2;
+					// spotlight2.intensity = 2.2;
+					// spotlight2.target.z = -200;
+					// spotlight2.target.x = 0;
+					// spotlight2.target.y = 0;
+					// spotlight2.penumbra = 1;
+					// scene.add(spotlight2);
 
           //var spotLightHelper = new THREE.SpotLightHelper( light );
           //scene.add( spotLightHelper );
 
-          var geo = new THREE.PlaneGeometry(32,32,380,380);
+          var geo = new THREE.PlaneGeometry(32,32,400,400);
 					var morphingSphere = new THREE.Mesh( geo, shaderMaterial );
 					// morphingSphere.rotation.y = Math.PI/2;
 					// morphingSphere.customDepthMaterial = new THREE.ShaderMaterial({
@@ -146,6 +171,10 @@ function init() {
           //     uniforms: shaderMaterial.uniforms
           // });
 					scene.add( morphingSphere );
+
+					var sphereGeo = new THREE.SphereGeometry(25, 32, 32);
+					var room = new THREE.Mesh( sphereGeo, new THREE.MeshLambertMaterial({color: 0xffffff, side: THREE.BackSide}) );
+					scene.add(room);
 
 
 					// var sphereGeo = new THREE.SphereGeometry(2, 32, 32);
@@ -165,6 +194,13 @@ function init() {
           });
 					scene.add( ico );
 					*/
+
+					createParticleSystem();
+
+
+
+
+
 
 					renderer = new THREE.WebGLRenderer({antialias: true});
 					renderer.setPixelRatio( window.devicePixelRatio );
@@ -208,6 +244,93 @@ function init() {
 					gui.add(shaderMaterial.uniforms.size, 'value', 4, 6).name('size').step(.02);
 					gui.add(shaderMaterial.uniforms.scale1, 'value', 0, 1).name('random distance from center').step(.02);
 					gui.add(shaderMaterial.uniforms.scale2, 'value', 0, 3).name('mouseover roll amount').step(.02);
+
+
+					// composer = new THREE.EffectComposer( renderer, renderer.renderTarget );
+					// var renderPass = new THREE.RenderPass(scene, camera);
+					// composer.addPass(renderPass);
+					// var effectCopy = new THREE.ShaderPass(THREE.CopyShader);
+					// effectCopy.renderToScreen = true;
+					// composer.addPass(effectCopy);
+
+
+
+					// var bloomPass = new THREE.BloomPass(10,25,4,256);
+					// //bloomPass.renderToScreen = true;
+					// composer.addPass(bloomPass);
+
+
+
+					// var params = {
+					// 	focus: 4,
+					// 	aspect: camera.aspect,
+					// 	aperture: .001,
+					// 	maxblur: .5
+					// };
+					// var bokehPass = new THREE.BokehPass(scene, camera, params);
+					// bokehPass.renderToScreen = true;
+					// composer.addPass(bokehPass);
+
+					// var effectCopy = new THREE.ShaderPass(THREE.CopyShader);
+					// effectCopy.renderToScreen = true;
+					// composer.addPass(effectCopy);
+
+					// var effectFilm = new THREE.FilmPass(0.8, 0.325, 256, false);
+					// effectFilm.renderToScreen = true;
+					// composer.addPass(effectFilm);
+
+
+
+
+}
+
+function createParticleSystem() {
+	// create the particle variables
+	particleCount = 20,
+	particles = new THREE.Geometry(),
+	pMaterial = new THREE.ParticleBasicMaterial({
+		color: 0xbbddff,
+		size: .5,
+		map: THREE.ImageUtils.loadTexture(
+			"particle.png"
+		),
+		transparent: true,
+		opacity: 0.5
+	});
+	pMaterial.depthWrite = false;
+
+	particleContainer = 3;
+
+	for (var p = 0; p < particleCount; p++) {
+		// var pX = Math.random() * particleContainer - particleContainer/2,
+		// 		pY = Math.random() * particleContainer - particleContainer/2,
+		// 		pZ = Math.random() * particleContainer - particleContainer/2,
+		var rand1 = Math.random()*Math.PI,
+				rand2 = Math.random()*2*Math.PI;
+	  var pX = particleContainer*Math.sin(rand1)*Math.cos(rand2),
+				pY = particleContainer*Math.sin(rand1)*Math.sin(rand2),
+				pZ = particleContainer*Math.cos(rand1),
+				particle = new THREE.Vector3(pX, pY, pZ);
+				particle.multiplyScalar(Math.random()*3.);
+
+		particle.velocity = new THREE.Vector3(
+			  0,              // x
+			  0, // y: random vel
+			  0);             // z
+
+		particles.vertices.push(particle);
+	}
+
+	// create the particle system
+	var particleSystem = new THREE.ParticleSystem(
+			particles,
+			pMaterial);
+
+	particleSystem.sortParticles = true;
+	particleSystem.name = "particleSystem";
+
+	// add it to the scene
+	scene.add(particleSystem);
 }
 
 function onWindowResize( event ) {
@@ -219,9 +342,9 @@ function onWindowResize( event ) {
 	uniforms.resolution.value.y = height;
 
 	camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+  camera.updateProjectionMatrix();
 
-    renderer.setSize( window.innerWidth, window.innerHeight );
+  renderer.setSize( window.innerWidth, window.innerHeight );
 
 }
 
@@ -306,6 +429,74 @@ function render() {
 	dampenedPickpoint.z += (pickPoint.z - dampenedPickpoint.z)*0.3;
 	uniforms.pickPoint.value = dampenedPickpoint;
 
-	renderer.render( scene, camera );
+	updateParticles();
 
+	renderer.render( scene, camera );
+	// var delta = clock.getDelta();
+	// composer.render(delta);
+}
+
+function updateParticles() {
+	var particleSystem = scene.getObjectByName('particleSystem');
+
+	var pCount = particleCount;
+  while (pCount--) {
+
+    var particle = particleSystem.geometry.vertices[pCount];
+
+		if (particle.y < -100) {
+			particle.y = 100;
+			particle.velocity.y = 0;
+		}
+		if (particle.x < -100) {
+			particle.x = 100;
+			particle.velocity.x = 0;
+		}
+		if (particle.z < -100) {
+			particle.z = 100;
+			particle.velocity.z = 0;
+		}
+
+		//particle.velocity.y -= (Math.random()-.5) * .1;
+		//particle.velocity.y = 0;
+		var factor = 0.1;
+		var damping = 0.002;
+		var radius = 3;
+
+
+
+
+	//	if (pCount == particleCount-1) {
+			//particle.velocity = dampenedPickpoint.clone().sub(particle).multiplyScalar(0.2);
+		// }
+		// else {
+		// 	var prevParticle = particleSystem.geometry.vertices[pCount + 1];
+		// 	particle.velocity = prevParticle.clone().sub(particle).multiplyScalar(0.2);
+		// }
+
+
+
+		particle.velocity.add( particle.clone().sub(particle.clone().normalize().multiplyScalar(radius)).multiplyScalar(-factor).sub(particle.velocity).multiplyScalar(damping) );
+		particle.velocity.add( new THREE.Vector3(Math.random(), Math.random(), Math.random()).multiplyScalar(damping).subScalar(damping/2));
+
+		var counter2 = particleCount;
+		while (counter2--) {
+			var vecTo = particle.clone().sub(particleSystem.geometry.vertices[counter2]);
+			var dist = vecTo.length();
+			vecTo.normalize();
+			particle.velocity.add(vecTo.multiplyScalar(0.002/(1+dist*dist)));
+		}
+
+		particle.add(particle.velocity);
+	}
+
+
+
+		particleSystem.geometry.verticesNeedUpdate = true;
+}
+
+function applyForce(particle) {
+
+
+	return particle;
 }
