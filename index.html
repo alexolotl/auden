@@ -217,6 +217,7 @@
           uniform float reflection;
           uniform float detail;
           uniform float octaves;
+          uniform float u_bump;
 
           // Varying
           varying vec3 vPosition;
@@ -291,6 +292,7 @@
               }
               return v;
           }
+          vec3 normVal; // storing this globally to compute bump accentuation
 
           vec3 parametric(float newu, float newv, float mousePullWidth, float mousePullHeight) {
                 vec3 newValue;
@@ -299,7 +301,7 @@
                 newValue.y = sin(newu)*sin(newv);
                 newValue.z = cos(newu);
                 newValue*=size/2.;
-                vec3 normVal = normalize(newValue);
+                normVal = normalize(newValue);
 
                 newValue += scale1*(.25*vec3(sin(time2*time/2.),sin(time2*time/3.),2.*sin(time2*time/2.5))+0.15*vec3(sin(time/6.),sin(time/5.),2.*sin(time/4.)));
 
@@ -311,6 +313,7 @@
                 newValue += normVal * displaced;
 
                 vColor = vec3(displaceX);
+                // vColor = vec3(newv);
 
                 // ROTATIONS
                 newValue = ( rotationMatrix(vec3(1.0,0.0,0.0), screen.y/1.5*scale2)*vec4(newValue,1.0) ).xyz;
@@ -325,69 +328,6 @@
 
 
           void main(void) {
-              // float mousePullHeight = mousePull;
-              // vec3 v = position;
-              //
-              // vUV.x = uv.x * M_PI;
-              // vUV.y = uv.y * M_PI*2.0;
-              // vec3 newPosition = parametric(vUV.x, vUV.y);
-              // vec3 norm1 = normalize(newPosition);
-              // //newPosition = rotate(newPosition);
-              // newPosition = deform(newPosition);
-              //
-              // vec3 origNP = newPosition;
-              // //newPosition = rotate(newPosition);
-              // //newPosition = rotate(newPosition);
-              // //newPosition = lift(newPosition, norm1, mousePullWidth, mousePull);
-              //
-              // float smallvalue = 0.01;
-              // vec3 neighbor1 = parametric(vUV.x+smallvalue, vUV.y);
-              // vec3 norm2 = normalize(neighbor1);
-              // neighbor1 = deform(neighbor1);
-              // // neighbor1 = rotate(neighbor1);
-              //
-              // vec3 neighbor2 = parametric(vUV.x, vUV.y+smallvalue);
-              // vec3 norm3 = normalize(neighbor2);
-              // neighbor2 = deform(neighbor2);
-              // // neighbor2 = rotate(neighbor2);
-              //
-              // vec3 tangent = neighbor1 - newPosition;
-              // vec3 bitangent = neighbor2 - newPosition;
-              // vec3 parametricNormal = normalize(cross(tangent, bitangent));
-              //
-              // // vec3 normalDiff = parametricNormal - norm1;
-              // // float angle = acos( dot(parametricNormal, norm1) / (length(parametricNormal)*length(norm1)) );
-              // //
-              // vNormal = rotateValue( parametricNormal, tangent, scale6);
-              // vNormal = rotate(parametricNormal);
-              // //vNormal += scale5*.1*(texture2D(textureSampler2,fract(uv*vec2(40.,4.)))).xyz; // METALLIC RIDGES
-              // //vNormal += .3*(texture2D(textureSampler2,fract(uv*5.))).xyz;
-              // //parametricNormal += normalDiff*scale5;
-              //
-              // //
-              // // float delta = 0.1*scale1;
-              // // vec3 rotated = origNP;//rotate(newPosition);
-              // // float displace = warp(rotated);
-              // // float gradX = ( warp(rotated + vec3(delta,0.,0.) ) - displace ) / delta;
-              // // float gradY = ( warp(rotated + vec3(0.,delta,0.) ) - displace ) / delta;
-              // // float gradZ = ( warp(rotated + vec3(0.,0.,delta) ) - displace ) / delta;
-              //
-              // //vNormal = normalize(parametricNormal - rotate(vec3(gradX,gradY,gradZ))*u_bump);
-              // //vNormal += scale3*W(vNormal*scale4);
-              //
-              // //vNormal = parametricNormal;
-              //
-              // newPosition = rotate(newPosition);
-              //
-              //
-              // vReflection = reflect(-normalize(modelMatrix*vec4(newPosition,1.0) - vec4(cameraPosition,1.0)), vec4(vNormal,0.0));
-              // vPosition = newPosition;
-              // gl_Position = projectionMatrix * modelViewMatrix * vec4(rotate(newPosition), 1.0);
-
-
-
-
-
 
               float mousePullHeight = mousePull;
 
@@ -395,15 +335,26 @@
 
 
 
-              vUV.x = uv.x * M_PI;
+              // vUV.x = mod(uv.x * M_PI-.01 + 0.01*uv.x + M_PI/2., M_PI); // the 0.01 helps fill in hole, the mod rotates it
+              // vUV.y = mod(uv.y * M_PI*2.0-.01 + 0.01*uv.y + M_PI, M_PI*2.);
+              vUV.x = uv.x * M_PI; // the 0.01 helps fill in hole, the mod rotates it
               vUV.y = uv.y * M_PI*2.0;
+              // vUV.x = uv.x * M_PI;
+              // vUV.y = uv.y * M_PI*2.0;
               vec3 newPosition = parametric(vUV.x, vUV.y, mousePullWidth, mousePullHeight);
               float smallvalue = 0.01;
               vec3 neighbor1 = parametric(vUV.x+smallvalue, vUV.y, mousePullWidth, mousePullHeight);
               vec3 neighbor2 = parametric(vUV.x, vUV.y+smallvalue, mousePullWidth, mousePullHeight);
               vec3 tangent = neighbor1 - newPosition;
               vec3 bitangent = neighbor2 - newPosition;
+
               vNormal = normalize(cross(tangent, bitangent));
+
+              // ALTERNATIVE the rotation difference between original normal and new normal, to accentuate bump
+              vec3 normOrig = normVal;
+              float normAngle = acos(dot(vNormal, normOrig));
+              vec3 crossed = normalize(cross(vNormal, normOrig));
+              vNormal = rotateValue(normOrig, crossed, normAngle*u_bump);
 
               vReflection = reflect(-normalize(modelMatrix*vec4(newPosition,1.0) - vec4(vEyePosition,1.0)), vec4(vNormal,0.0));
               vModelMatrix = modelMatrix;
@@ -415,70 +366,6 @@
           }
     </script>
     <script id="fragment" type="x-shader/x-fragment">
-          // precision highp float;
-          // #define M_PI 3.14159265359
-          //
-          // // Varying
-          // varying vec3 vPosition;
-          // varying vec3 vNormal;
-          // varying vec2 vUV;
-          // varying vec3 vColor;
-          // varying vec2 vR;
-          // varying vec4 vReflection;
-          //
-          //
-          // // Uniforms
-          // uniform float time;
-          // uniform vec2 resolution;
-          // uniform float specularLight;
-          // uniform float reflection;
-          // uniform sampler2D textureSampler;
-          // uniform vec3 pickPoint;
-          // uniform mat4 modelMatrix;
-          //
-          // mat2 rotate2d(in float _angle) {
-          //     return mat2(cos(_angle),-sin(_angle),sin(_angle),cos(_angle));
-          // }
-          //
-          //
-          //
-          //
-          // void main(void) {
-          //   vec2 newUv = vUV;
-          //     vec3 vLightPosition = vec3(15.,30.,30.);
-          //     vLightPosition = vec3(0.,5.,0.);
-          //
-          //     // World values
-          //     vec3 vPositionW = vec3(modelMatrix * vec4(vPosition, 1.0));
-          //     vec3 vNormalW = normalize(vec3(modelMatrix * vec4(vNormal, 0.0)));
-          //     vec3 viewDirectionW = normalize(cameraPosition - vPositionW);
-          //
-          //     // Light
-          //     vec3 lightVectorW = normalize(vLightPosition - vPositionW);
-          //     vec3 color = vColor;
-          //     color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.5,1.)).rgb;
-          //     color *= (color+.2);
-          //     color = mix(vec3(1.), color, reflection);
-          //
-          //     float fresnel = 1.-pow(dot(viewDirectionW, vNormalW), 1.0);
-          //     //color += vec3(0.,0.,1.)*fresnel;
-          //
-          //     // emissive
-          //     float emissive = 1.;
-          //
-          //     // diffuse
-          //     float ndl = max(0., dot(vNormalW, normalize(vec3(0.,5.,0.))));
-          //
-          //     //ndl += .5*max(0., dot(vNormalW, normalize(vec3(0.,1.,0.))));
-          //     //ndl += .5*max(0., dot(vNormalW, normalize(vec3(.2,0.,-1.))));
-          //     //ndl += .5*max(0., dot(vNormalW, normalize(vec3(.2,0.,1.))));
-          //
-          //     // Specular
-          //     vec3 angleW = normalize(viewDirectionW + lightVectorW);
-          //     float specComp = max(0., dot(vNormalW, angleW));
-          //     specComp = pow(specComp, 512.) * 0.05;
-          //
-          //     gl_FragColor = vec4(mix(emissive*color, ndl*color*1. + specComp*5.*specularLight, 0.66),1.);
 
           precision highp float;
           #define M_PI 3.14159265359
@@ -527,7 +414,7 @@
               vec3 color = texture2D(textureSampler, vUV).rgb;
               color = vec3(1.0,1.0,1.0);
               //color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.5,1.)).rgb;
-              color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI),(vReflection.xz/5.)+0.35,1.)).rgb;
+              color = texture2D(textureSampler, mix(vUV/vec2(M_PI,2.*M_PI)+vec2(0.5,0.5),(vReflection.xz/5.)+0.35,1.)).rgb;
               //color *= (color+.2);
               color *= (color+.12);
               float fresnel = 1.-dot(viewDirectionW, vNormalW);
@@ -559,6 +446,7 @@
               specComp = pow(specComp, 512.) * 0.05;
 
               gl_FragColor = vec4(mix(emissive*color, ndl*color*vec3(1.,0.98,1.)*1. + specComp*5.*specularLight, 0.66),1.);
+              // gl_FragColor = vec4(vNormal, 1.); // this looks really cool...especially if you change the bump extremity
           }
     </script>
 </head>

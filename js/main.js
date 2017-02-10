@@ -50,28 +50,6 @@ function init() {
 	// texture2.minFilter = THREE.NearestFilter;
 
 	uniforms = {
-			// time: { type: "f", value: 1.0 },
-			// resolution: { type: "v2", value: new THREE.Vector2(width,height) },
-			// mouse: {type: "v2", value: new THREE.Vector2(mouse.x,mouse.y) },
-			// dampenedMouse: {type: "v2", value: new THREE.Vector2(mouse.x,mouse.y) },
-			// scale1: {type: "f", value: 1},
-			// scale2: {type: "f", value: 1},
-			// scale3: {type: "f", value: 1.},
-			// scale4: {type: "f", value: 1},
-			// scale5: {type: "f", value: 1},
-			// scale6: {type: "f", value: 0},
-			// scale7: {type: "f", value: 1},
-			// time1: {type: "f", value: 1.0},
-			// mousePullWidth: {type: "f", value: 3.0},
-			// mousePull: {type: "f", value: .3},
-			// displace: {type: "f", value: 1.0},
-			// reflection: {type: "f", value: 0},
-			// textureSampler: {type: "t", value: texture},
-			// //textureSampler2: {type: "t", value: texture2},
-			// pickPoint: {type: "v3", value: new THREE.Vector3() },
-			// size: {type: "f", value: 4.5},
-			// specularLight: {type: "f", value: .3},
-			// u_bump: {type: "f", value: 0.22}
 			textureSampler: { type: "t", value: texture},
 			time: {type: "f", value: 0},
 			vEyePosition: {type: "v3", value: camera.position},
@@ -99,7 +77,8 @@ function init() {
 			reflection: {type: "f", value: 0},
 			specularLight: {type: "f", value: 0},
 			detail: {type: "f", value: .5},
-			octaves: {type: "f", value: 2}
+			octaves: {type: "f", value: 2},
+			u_bump: {type: "f", value: 1}
 	}
 
 	var shaderMaterial = new THREE.ShaderMaterial( {
@@ -162,7 +141,13 @@ function init() {
           //var spotLightHelper = new THREE.SpotLightHelper( light );
           //scene.add( spotLightHelper );
 
-          var geo = new THREE.PlaneGeometry(32,32,400,400);
+          // var geo = new THREE.PlaneGeometry(32,32,400,400);
+					// var geo = new THREE.PlaneBufferGeometry(32,32,400,400);
+					// var geo = new THREE.SphereBufferGeometry(32,8,8);
+					var paraSphere = function(u, v) {
+						return new THREE.Vector3(4.5*Math.sin(u)*Math.cos(v), 4.5*Math.sin(u)*Math.sin(v), 4.5*Math.cos(u));
+					};
+					var geo = new THREE.ParametricBufferGeometry( paraSphere, 400, 400 );
 					var morphingSphere = new THREE.Mesh( geo, shaderMaterial );
 					// morphingSphere.rotation.y = Math.PI/2;
 					// morphingSphere.customDepthMaterial = new THREE.ShaderMaterial({
@@ -244,6 +229,7 @@ function init() {
 					gui.add(shaderMaterial.uniforms.size, 'value', 4, 6).name('size').step(.02);
 					gui.add(shaderMaterial.uniforms.scale1, 'value', 0, 1).name('random distance from center').step(.02);
 					gui.add(shaderMaterial.uniforms.scale2, 'value', 0, 3).name('mouseover roll amount').step(.02);
+					gui.add(shaderMaterial.uniforms.u_bump, 'value', 0, 6).name('accentuation of shading').step(.02);
 
 
 					// composer = new THREE.EffectComposer( renderer, renderer.renderTarget );
@@ -363,11 +349,11 @@ function onMouseMove( event ) {
 	oldmouse.x = oldmouse.x / window.innerWidth * 2 - 1;
 	oldmouse.y = oldmouse.y / window.innerHeight * 2 - 1;
 
-	raycaster.setFromCamera( mousevec, camera );
-	var intersects = raycaster.intersectObjects( scene.children );
-	if (intersects.length > 0) {
-      pickPoint = intersects[0].point;
-  }
+	// raycaster.setFromCamera( mousevec, camera );
+	// var intersects = raycaster.intersectObjects( scene.children );
+	// if (intersects.length > 0) {
+  //     pickPoint = intersects[0].point;
+  // }
 
 
 }
